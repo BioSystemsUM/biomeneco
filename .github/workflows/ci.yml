@@ -22,7 +22,6 @@ jobs:
           - ubuntu-latest
         python-version:
           - 3.9
-          - 3.10
 
     steps:
       - uses: actions/checkout@v3
