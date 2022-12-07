@@ -1,0 +1,6 @@
+cobra~=0.26.0
+pandas~=1.5.2
+docplex~=2.24.232
+clyngor-with-clingo
+meneco
+bioiso @ git+https://github.com/BioSystemsUM/BioISO.git
