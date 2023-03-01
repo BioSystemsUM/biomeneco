@@ -38,7 +38,7 @@ def identify_seeds(model_path: str) -> List[Tuple[str, str]]:
         The path to the model to identify the seeds of.
     """
 
-    model = load(model_path)
+    model = load(model_path)  # carregar o modelo
     total_seeds = []
     total_seeds_ids = []
     for reaction in model.reactions:
@@ -49,7 +49,7 @@ def identify_seeds(model_path: str) -> List[Tuple[str, str]]:
         reactants = reaction.reactants
         products = reaction.products
         for reactant in reactants:
-            if reactant.compartment == "C_00001":
+            if reactant.compartment == "C_00001":  # external compartment
                 found_out = True
                 if reaction.lower_bound < 0 and reactant.id not in total_seeds_ids:
                     seeds_ids.append(reactant.id)
