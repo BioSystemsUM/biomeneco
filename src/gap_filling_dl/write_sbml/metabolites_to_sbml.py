@@ -9,8 +9,6 @@ def write_metabolites_to_sbml(file_name: str, save_path: str, metabolites: List[
     Write a list of metabolites to an SBML file.
     Parameters
     ----------
-    model_path: str
-        The path to the model to write the metabolites to.
     file_name: str
         The name of the SBML file to write to.
     save_path: str
@@ -18,6 +16,7 @@ def write_metabolites_to_sbml(file_name: str, save_path: str, metabolites: List[
     metabolites: Tuple[str, str]
         A list of metabolites to write to the SBML file.
     """
+
 
     model = cobra.Model()
     metabolite_cobra_metabolite_objects = []
