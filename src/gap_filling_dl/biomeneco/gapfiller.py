@@ -30,6 +30,7 @@ class GapFiller:
         self._targets_path = file_path
 
     # read the universal model: cobra.io.read_sbml_model(universal_model_path)
+
     @property
     def universal_model(self):
         return cobra.io.read_sbml_model(self.universal_model_path)
