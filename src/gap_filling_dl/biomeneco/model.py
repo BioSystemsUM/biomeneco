@@ -1,4 +1,3 @@
-
 from typing import Tuple, List
 import cobra
 from bioiso import BioISO
@@ -167,6 +166,10 @@ class Model(cobra.Model):
             write_metabolites_to_sbml(file_name, save_path, self.seeds)
         if targets:
             write_metabolites_to_sbml(file_name, save_path, self.targets)
+
+
+
+
 
 
 
