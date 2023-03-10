@@ -6,7 +6,7 @@ from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_
 
 
 class Model(cobra.Model):
-    def __init__(self, model_path, *args, **kwargs):
+    def __init__(self, model_path: str, *args, **kwargs):
         self.model_path = model_path
         self.initialize_model()
         super().__init__(*args, **kwargs)
@@ -146,7 +146,7 @@ class Model(cobra.Model):
 
         return targets
 
-    def to_sbml(self, file_name, save_path, seeds=True, targets=True):
+    def to_sbml(self, file_name: str, save_path: str, seeds=True, targets=True):
         """
         Write a model to an SBML file.
 
@@ -156,9 +156,9 @@ class Model(cobra.Model):
             The name of the SBML file to write to.
         save_path: str
             The path to save the SBML file to.
-        seeds: list[Tuple[str, str]]
+        seeds: Boolean
             A list of tuples of seed metabolite IDs and compartments.
-        targets:
+        targets: Boolean
             A list of tuples of target metabolite IDs and compartments.
         """
 
@@ -166,6 +166,7 @@ class Model(cobra.Model):
             write_metabolites_to_sbml(file_name, save_path, self.seeds)
         if targets:
             write_metabolites_to_sbml(file_name, save_path, self.targets)
+
 
 
 
