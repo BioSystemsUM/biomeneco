@@ -89,10 +89,11 @@ class GapFiller:
         seeds_file = None
         targets_file = None
         universal_model_file = None
-
+        # print(os.listdir(folder_path))
+        # print(os.listdir(folder_path))
         for file in os.listdir(folder_path):
             if file.endswith(".xml"):
-                if "model" in file:
+                if "model" in file and "universal" not in file:
                     model_file = file
                 elif "seeds" in file:
                     seeds_file = file
@@ -101,6 +102,14 @@ class GapFiller:
                 elif "universal_model" in file:
                     universal_model_file = file
 
+                print(f"Found file: {file}")
+
+        print(f"model_file: {model_file}")
+        print(f"seeds_file: {seeds_file}")
+        print(f"targets_file: {targets_file}")
+        print(f"universal_model_file: {universal_model_file}")
+
+        # assure that all files are found and raise an error if not
         if not model_file:
             raise FileNotFoundError("No model file found in folder.")
         if not seeds_file:
@@ -157,4 +166,3 @@ class GapFiller:
                 print(f"\t{key}: {value}")
 
         return results
-

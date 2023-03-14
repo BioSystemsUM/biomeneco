@@ -85,7 +85,8 @@ class Model(cobra.Model):
 
         return total_seeds
 
-    def identify_targets(self, objective_function: str = None,
+# funcao com bug
+    def identify_targets(self, objective_function: str = 'Biomass_C3_cytop',
                          objective='maximize', solver='cplex') -> List[Tuple[str, str]]:
         """
     Identify the targets (external metabolites that leave the model) of a model.
