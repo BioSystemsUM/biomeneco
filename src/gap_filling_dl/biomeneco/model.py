@@ -1,3 +1,4 @@
+import os
 from typing import Tuple, List
 import cobra
 from bioiso import BioISO
@@ -6,9 +7,12 @@ from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_
 
 
 class Model(cobra.Model):
-    def __init__(self, model_path: str, *args, **kwargs):
+    def __init__(self, model_path: str, objective_func: str = None, *args, **kwargs):
         self.model_path = model_path
         self.initialize_model()
+        self._targets = None
+        self._seeds = None
+        self.objective_func = objective_func
         super().__init__(*args, **kwargs)
 
     def initialize_model(self):
@@ -45,7 +49,8 @@ class Model(cobra.Model):
         Returns:
             A list of tuples, where each tuple contains the ID and compartment of a target metabolite.
             """
-        return self.identify_targets()
+
+        return self.identify_targets(objective_function=self.objective_func)
 
     # method to identify the seeds of a model
     def identify_seeds(self) -> List[Tuple[str, str]]:
@@ -85,34 +90,29 @@ class Model(cobra.Model):
 
         return total_seeds
 
-# funcao com bug
-    def identify_targets(self, objective_function: str = 'Biomass_C3_cytop',
-                         objective='maximize', solver='cplex') -> List[Tuple[str, str]]:
+    def identify_targets(self, objective_function: str,
+                         objective: str = 'maximize', solver: str = 'cplex') -> List[Tuple[str, str]]:
+        """Identify the targets of a model.
+
+        Args:
+            objective_function: The objective function of the model.
+            objective: The type of objective function. Either 'maximize' or 'minimize'.
+            solver: The solver to use. Either 'cplex' or 'glpk'.
+
+        Returns:
+            A list of tuples, where each tuple contains the ID and compartment of a target metabolite.
         """
-    Identify the targets (external metabolites that leave the model) of a model.
 
-    Parameters
-    ----------
-    objective_function: str
-        The name of the objective function to use. Default is 'Biomass_C3_cytop'.
-    objective: str
-        The type of optimization objective to use. Default is 'maximize'.
-    solver: str
-        The solver to use for optimization. Default is 'cplex'.
+        if not isinstance(objective_function, str) or not objective_function:
+            objective_function = self.objective_func
+            if not isinstance(objective_function, str) or not objective_function:
+                raise ValueError("The objective function must be a string.")
 
-    Returns
-    -------
-    List of tuples representing identified targets, where each tuple is of the form (metabolite_id, compartment).
-    """
+        if not isinstance(objective, str) or not objective:
+            raise ValueError("The objective must be a string.")
 
-        if objective_function is None:  # 'Biomass_C3_cytop'
-            raise ValueError("Objective function cannot be None.")
-
-        if objective is None:
-            raise ValueError("Objective type cannot be None.")
-
-        if solver is None:
-            raise ValueError("Solver cannot be None.")
+        if not isinstance(solver, str) or not solver:
+            raise ValueError("The solver must be a string.")
 
         model = self.model
         # print(model.summary())
@@ -163,15 +163,19 @@ class Model(cobra.Model):
             A list of tuples of target metabolite IDs and compartments.
         """
 
-        if seeds:
-            write_metabolites_to_sbml(file_name, save_path, self.seeds)
-        if targets:
-            write_metabolites_to_sbml(file_name, save_path, self.targets)
-
-
-
-
-
-
-
-
+        if seeds:  # if the user wants to save the seeds.xml
+            seeds_file_name = os.path.splitext(file_name)[0] + "_seeds.xml"
+            # check if the file name already exists: ...
+            suffix = 1
+            while os.path.exists(os.path.join(save_path, seeds_file_name)):
+                seeds_file_name = os.path.splitext(file_name)[0] + "_seeds" + str(suffix) + ".xml"
+                suffix += 1
+            write_metabolites_to_sbml(seeds_file_name, save_path, self.seeds)
+        if targets:  # if the user wants to save the targets
+            targets_file_name = os.path.splitext(file_name)[0] + "_targets.xml"
+            # check if the file name already exists: ...
+            suffix = 1
+            while os.path.exists(os.path.join(save_path, targets_file_name)):
+                targets_file_name = os.path.splitext(file_name)[0] + "_targets" + str(suffix) + ".xml"
+                suffix += 1
+            write_metabolites_to_sbml(targets_file_name, save_path, self.targets)
