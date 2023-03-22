@@ -15,13 +15,11 @@ def write_metabolites_to_sbml(file_name, save_path, metabolites):
 
     Parameters
     ----------
-    model_path: str
-        The path to the model to write the metabolites to.
     file_name: str
         The name of the SBML file to write to.
     save_path: str
         The path to save the SBML file to.
-    metabolites: Tuple[str, str]
+    metabolites: List[Tuple[str, str]]
         A list of metabolites to write to the SBML file.
 
     """
@@ -156,9 +154,9 @@ class Model(cobra.Model):
             The name of the SBML file to write to.
         save_path: str
             The path to save the SBML file to.
-        seeds: Tuple[str, str]
+        seeds: list[Tuple[str, str]]
             A list of tuples of seed metabolite IDs and compartments.
-        targets: Tuple[str, str]
+        targets:
             A list of tuples of target metabolite IDs and compartments.
         """
 
@@ -233,6 +231,21 @@ class GapFiller:
                                          enumeration=enumeration, json_output=json_output)
         return self.results_meneco
 
+    # @classmethod
+    # def from_folder(cls, folder_path):
+    #     """
+    #     Create a GapFiller object from a folder.
+    #
+    #     Parameters
+    #     ----------
+    #     folder_path: str
+    #         The path to the folder to create a GapFiller object from.
+    #     """
+    #     gap_filler = cls(folder_path + "/model.xml", folder_path + "/universal_model.xml")
+    #     gap_filler.seeds_path = folder_path + "/seeds.xml"
+    #     gap_filler.targets_path = folder_path + "/targets.xml"
+    #     return gap_filler
+
     @classmethod
     def from_folder(cls, folder_path):
         """
@@ -243,9 +256,35 @@ class GapFiller:
         folder_path: str
             The path to the folder to create a GapFiller object from.
         """
-        gap_filler = cls(folder_path + "/model.xml", folder_path + "/universal_model.xml")
-        gap_filler.seeds_path = folder_path + "/seeds.xml"
-        gap_filler.targets_path = folder_path + "/targets.xml"
+
+        model_file = None
+        seeds_file = None
+        targets_file = None
+        universal_model_file = None
+
+        for file in os.listdir(folder_path):
+            if file.endswith(".xml"):
+                if "model" in file:
+                    model_file = file
+                elif "seeds" in file:
+                    seeds_file = file
+                elif "targets" in file:
+                    targets_file = file
+                elif "universal_model" in file:
+                    universal_model_file = file
+
+        if not model_file:
+            raise FileNotFoundError("No model file found in folder.")
+        if not seeds_file:
+            raise FileNotFoundError("No seeds file found in folder.")
+        if not targets_file:
+            raise FileNotFoundError("No targets file found in folder.")
+        if not universal_model_file:
+            raise FileNotFoundError("No universal model file found in folder.")
+
+        gap_filler = cls(folder_path + "/" + model_file, folder_path + "/" + universal_model_file)
+        gap_filler.seeds_path = folder_path + "/" + seeds_file
+        gap_filler.targets_path = folder_path + "/" + targets_file
         return gap_filler
 
     def evaluate_results(self, verbose=False):
@@ -292,11 +331,14 @@ class GapFiller:
         return results
 
 
-# fazer from folder
-# fazer tests
-# alterar id das reações e metabolitos do universal model
-# docstrings, tipagem
-# dividir classes em ficheiros diferentes
+
+
+
+# fazer from folder: Ok
+# fazer tests ok~~~
+# alterar id das reações e metabolitos do universal model ok
+# docstrings, tipagem: quase tudo
+# dividir classes em ficheiros diferentes: Ok
 
 
 
