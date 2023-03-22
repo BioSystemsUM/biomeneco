@@ -8,7 +8,7 @@ from tests import TEST_DIR
 class TestModel(unittest.TestCase):
     def setUp(self):
         # load the test model
-        self.model_path = os.path.join(TEST_DIR, "data/models/toy_network.xml")
+        self.model_path = os.path.join(TEST_DIR, "data/models/model_toy_network.xml")
         self.model = load(self.model_path)
         self.model.objective = "e_Biomass__in"
 
@@ -40,7 +40,7 @@ class TestModel(unittest.TestCase):
 
     def test_to_sbml(self):
         try:
-            model_path = os.path.join(TEST_DIR, "data/models/toy_network.xml")
+            model_path = os.path.join(TEST_DIR, "data/models/model_toy_network.xml")
             model = Model(model_path)
             #print(model.model.reactions)
             model.objective_func = "e_Biomass__in"  # add this line to set the objective function to a string value
