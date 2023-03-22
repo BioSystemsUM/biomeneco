@@ -119,10 +119,56 @@ class GapFiller:
         if not universal_model_file:
             raise FileNotFoundError("No universal model file found in folder.")
 
-        gap_filler = cls(folder_path + "/" + model_file, folder_path + "/" + universal_model_file)
-        gap_filler.seeds_path = folder_path + "/" + seeds_file
-        gap_filler.targets_path = folder_path + "/" + targets_file
+        # create the GapFiller object
+        gap_filler = cls(model_path=os.path.join(folder_path, model_file),
+                         universal_model_path=os.path.join(folder_path, universal_model_file))
+        gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
+        gap_filler.targets_path = os.path.join(folder_path, targets_file)
+
         return gap_filler
+
+    # def evaluate_results(self, verbose=False):
+    #     """
+    #     Evaluate the results of the gap-filling algorithm.
+    #
+    #     Parameters
+    #     ----------
+    #     verbose : bool, optional
+    #         Whether to print out detailed information about the results.
+    #
+    #     Returns
+    #     -------
+    #     dict
+    #         A dictionary containing the evaluation metrics.
+    #     """
+    #     results = {}
+    #
+    #     # Get the number of seed reactions
+    #     seeds = cobra.io.read_sbml_model(self.seeds_path)
+    #     results["Seed reactions"] = len(seeds.reactions)
+    #
+    #     # Get the number of target reactions
+    #     targets = cobra.io.read_sbml_model(self.targets_path)
+    #     results["Target reactions"] = len(targets.reactions)
+    #
+    #     # Get the number of reactions in the draft network
+    #     draft = cobra.io.read_sbml_model(self.results_meneco["Draft network file"])
+    #     results["Draft reactions"] = len(draft.reactions)
+    #
+    #     # Get the number of gap-filled reactions
+    #     gf = cobra.io.read_sbml_model(self.results_meneco["Draft network file"])
+    #     gf.remove_reactions([r.id for r in draft.reactions])
+    #     results["Gap-filled reactions"] = len(gf.reactions)
+    #
+    #     # Get the number of unproducible targets
+    #     results["Unproducible targets"] = len(self.results_meneco["Unproducible targets"])
+    #
+    #     if verbose:
+    #         print("Evaluation results:")
+    #         for key, value in results.items():
+    #             print(f"\t{key}: {value}")
+    #
+    #     return results
 
     def evaluate_results(self, verbose=False):
         """
@@ -157,8 +203,8 @@ class GapFiller:
         gf.remove_reactions([r.id for r in draft.reactions])
         results["Gap-filled reactions"] = len(gf.reactions)
 
-        # Get the number of unproducible targets
-        results["Unproducible targets"] = len(self.results_meneco["Unproducible targets"])
+        # Get the number of unproducible reactions
+        results["Unproducible reactions"] = len(self.results_meneco["Unproducible targets"])
 
         if verbose:
             print("Evaluation results:")
@@ -166,3 +212,4 @@ class GapFiller:
                 print(f"\t{key}: {value}")
 
         return results
+
