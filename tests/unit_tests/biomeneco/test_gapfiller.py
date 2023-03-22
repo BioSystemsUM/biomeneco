@@ -3,7 +3,6 @@ import os
 from unittest.mock import patch, MagicMock, mock_open
 import io
 import cobra
-
 from src.gap_filling_dl.biomeneco.gapfiller import GapFiller
 import unittest.mock as mock
 
@@ -133,7 +132,7 @@ class TestGapFiller(unittest.TestCase):
 
         evaluted_results = gap_filler.evaluate_results()
         expected_evaluated_keys = {'Seed reactions', 'Target reactions', 'Draft reactions', 'Gap-filled reactions',
-                                      'Unproducible reactions'}
+                                   'Unproducible reactions'}
 
         # Check that the output dictionary has the expected keys
         self.assertSetEqual(set(evaluted_results.keys()), expected_evaluated_keys)

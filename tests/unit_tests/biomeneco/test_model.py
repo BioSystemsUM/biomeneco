@@ -19,6 +19,8 @@ class TestModel(unittest.TestCase):
     def test_identify_seeds(self):
         # test if identify_seeds method returns a list of tuples
         model = Model(self.model_path)
+        print(model.seeds)
+        print(model.seeds)
         self.assertIsInstance(model.seeds, list)
         self.assertIsInstance(model.seeds[0], tuple)
 

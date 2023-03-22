@@ -7,20 +7,16 @@ from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_
 
 
 class Model(cobra.Model):
-    def __init__(self, model_path: str, objective_func: str = None, *args, **kwargs):
-        self.model_path = model_path
-        self.initialize_model()
-        self._targets = None
-        self._seeds = None
-        self.objective_func = objective_func
-        super().__init__(*args, **kwargs)
+    def __init__(self, model: cobra.Model, objective_function_id, *args, **kwargs):
+        self.objective_function_id = objective_function_id
+        super().__init__(id_or_model=model, *args, **kwargs)
 
-    def initialize_model(self):
-        """
-        Initialize the model.
+    @classmethod
+    def from_sbml(cls, model_path: str, objective_function: str = None):
+        model = cobra.io.read_sbml_model(model_path)
+        model.objective = objective_function
+        return cls(model, objective_function_id=objective_function)
 
-        """
-        self.model = load(self.model_path)
 
     def __str__(self):
         """
@@ -30,7 +26,7 @@ class Model(cobra.Model):
 
         """
 
-        return self.model.summary()
+        return self.summary()
 
     @property
     def seeds(self) -> List[Tuple[str, str]]:
@@ -50,7 +46,7 @@ class Model(cobra.Model):
             A list of tuples, where each tuple contains the ID and compartment of a target metabolite.
             """
 
-        return self.identify_targets(objective_function=self.objective_func)
+        return self.identify_targets()
 
     # method to identify the seeds of a model
     def identify_seeds(self) -> List[Tuple[str, str]]:
@@ -60,10 +56,9 @@ class Model(cobra.Model):
             A list of tuples, where each tuple contains the ID and compartment of a seed metabolite.
         """
 
-        model = self.model
         total_seeds = []
         total_seeds_ids = []
-        for reaction in model.exchanges:
+        for reaction in self.exchanges:
             reactants = reaction.reactants
             for reactant in reactants:
                 if reactant.id not in total_seeds_ids and reaction.lower_bound < 0:
@@ -72,12 +67,11 @@ class Model(cobra.Model):
 
         return total_seeds
 
-    def identify_targets(self, objective_function: str,
+    def identify_targets(self,
                          objective: str = 'maximize', solver: str = 'cplex') -> List[Tuple[str, str]]:
         """Identify the targets of a model.
 
         Args:
-            objective_function: The objective function of the model.
             objective: The type of objective function. Either 'maximize' or 'minimize'.
             solver: The solver to use. Either 'cplex' or 'glpk'.
 
@@ -85,8 +79,8 @@ class Model(cobra.Model):
             A list of tuples, where each tuple contains the ID and compartment of a target metabolite.
         """
 
-        if not isinstance(objective_function, str) or not objective_function:
-            objective_function = self.objective_func
+        if not isinstance(self.objective_function_id, str) or not self.objective_function_id:
+            objective_function = self.objective
             if not isinstance(objective_function, str) or not objective_function:
                 raise ValueError("The objective function must be a string.")
 
@@ -96,12 +90,11 @@ class Model(cobra.Model):
         if not isinstance(solver, str) or not solver:
             raise ValueError("The solver must be a string.")
 
-        model = self.model
-        # print(model.summary())
-        set_solver(model, solver)
-        model.objective = objective_function
 
-        bio = BioISO(objective_function, model, objective)
+        # print(model.summary())
+        set_solver(self, solver)
+
+        bio = BioISO(self.objective_function_id, self, objective)
         bio.run(2, False)
 
         results = bio.get_tree()
