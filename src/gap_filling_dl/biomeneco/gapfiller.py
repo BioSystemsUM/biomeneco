@@ -70,7 +70,7 @@ class GapFiller:
             A dictionary containing information about the gap-filling solution.
         """
 
-        self.results_meneco = run_meneco(self.model_path, self.universal_model_path, self.seeds_path, self.targets_path,
+        self.results_meneco = run_meneco(self.model_path, self.seeds_path, self.targets_path, self.universal_model_path,
                                          enumeration=enumeration, json_output=json_output)
         return self.results_meneco
 

@@ -63,30 +63,12 @@ class Model(cobra.Model):
         model = self.model
         total_seeds = []
         total_seeds_ids = []
-        for reaction in model.reactions:
-            found_out = False
-            found_inside = False
-            seeds = []
-            seeds_ids = []
+        for reaction in model.exchanges:
             reactants = reaction.reactants
-            products = reaction.products
             for reactant in reactants:
-                if reactant.compartment == "C_00001":
-                    found_out = True
-                    if reaction.lower_bound < 0 and reactant.id not in total_seeds_ids:
-                        seeds_ids.append(reactant.id)
-                        seeds.append((reactant.id, reactant.compartment))
-
-            for product in products:
-                if product.compartment == "C_00002":
-                    found_inside = True
-                    if reaction.upper_bound > 0 and product.id not in total_seeds_ids:
-                        seeds_ids.append(product.id)
-                        seeds.append((product.id, product.compartment))
-
-            if found_out and found_inside:
-                total_seeds += seeds
-                total_seeds_ids += seeds_ids
+                if reactant.id not in total_seeds_ids and reaction.lower_bound < 0:
+                    total_seeds.append((reactant.id, reactant.compartment))
+                    total_seeds_ids.append(reactant.id)
 
         return total_seeds
 
@@ -133,17 +115,21 @@ class Model(cobra.Model):
             biomass_component_analysis = biomass_components[biomass_component].get("analysis")
             if biomass_component_role == "Reactant" and not biomass_component_analysis:
                 specific_biomass_components = biomass_components[biomass_component].get("next")
-                for specific_biomass_component in specific_biomass_components:
+                if not specific_biomass_components and biomass_components[biomass_component].get("identifier") not in targets:
+                    targets.append((biomass_components[biomass_component].get("identifier"),
+                                    biomass_components[biomass_component].get("compartment")))
+                else:
+                    for specific_biomass_component in specific_biomass_components:
 
-                    specific_biomass_component_report = specific_biomass_components[specific_biomass_component]
-                    analysis = specific_biomass_component_report.get("analysis")
-                    role = specific_biomass_component_report.get("role")
-                    if role == "Reactant" and not analysis:
-                        target_id = specific_biomass_component_report.get("identifier")
-                        compartment = specific_biomass_component_report.get("compartment")
+                        specific_biomass_component_report = specific_biomass_components[specific_biomass_component]
+                        analysis = specific_biomass_component_report.get("analysis")
+                        role = specific_biomass_component_report.get("role")
+                        if role == "Reactant" and not analysis:
+                            target_id = specific_biomass_component_report.get("identifier")
+                            compartment = specific_biomass_component_report.get("compartment")
 
-                        if target_id not in targets:
-                            targets.append((target_id, compartment))
+                            if target_id not in targets:
+                                targets.append((target_id, compartment))
 
         return targets
 
@@ -165,17 +151,7 @@ class Model(cobra.Model):
 
         if seeds:  # if the user wants to save the seeds.xml
             seeds_file_name = os.path.splitext(file_name)[0] + "_seeds.xml"
-            # check if the file name already exists: ...
-            suffix = 1
-            while os.path.exists(os.path.join(save_path, seeds_file_name)):
-                seeds_file_name = os.path.splitext(file_name)[0] + "_seeds" + str(suffix) + ".xml"
-                suffix += 1
             write_metabolites_to_sbml(seeds_file_name, save_path, self.seeds)
         if targets:  # if the user wants to save the targets
             targets_file_name = os.path.splitext(file_name)[0] + "_targets.xml"
-            # check if the file name already exists: ...
-            suffix = 1
-            while os.path.exists(os.path.join(save_path, targets_file_name)):
-                targets_file_name = os.path.splitext(file_name)[0] + "_targets" + str(suffix) + ".xml"
-                suffix += 1
             write_metabolites_to_sbml(targets_file_name, save_path, self.targets)
