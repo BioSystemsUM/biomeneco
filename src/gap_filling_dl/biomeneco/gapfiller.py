@@ -2,11 +2,13 @@ import os
 import time
 import cobra
 from meneco import run_meneco
+from cobra.flux_analysis.gapfilling import GapFiller
 
 
 class GapFiller:
     def __init__(self, model_path, universal_model_path):
 
+        self.cobra_filled_model = None
         self.results_meneco = None
         self.universal_model_path = universal_model_path
         self.model_path = model_path
@@ -127,49 +129,6 @@ class GapFiller:
 
         return gap_filler
 
-    # def evaluate_results(self, verbose=False):
-    #     """
-    #     Evaluate the results of the gap-filling algorithm.
-    #
-    #     Parameters
-    #     ----------
-    #     verbose : bool, optional
-    #         Whether to print out detailed information about the results.
-    #
-    #     Returns
-    #     -------
-    #     dict
-    #         A dictionary containing the evaluation metrics.
-    #     """
-    #     results = {}
-    #
-    #     # Get the number of seed reactions
-    #     seeds = cobra.io.read_sbml_model(self.seeds_path)
-    #     results["Seed reactions"] = len(seeds.reactions)
-    #
-    #     # Get the number of target reactions
-    #     targets = cobra.io.read_sbml_model(self.targets_path)
-    #     results["Target reactions"] = len(targets.reactions)
-    #
-    #     # Get the number of reactions in the draft network
-    #     draft = cobra.io.read_sbml_model(self.results_meneco["Draft network file"])
-    #     results["Draft reactions"] = len(draft.reactions)
-    #
-    #     # Get the number of gap-filled reactions
-    #     gf = cobra.io.read_sbml_model(self.results_meneco["Draft network file"])
-    #     gf.remove_reactions([r.id for r in draft.reactions])
-    #     results["Gap-filled reactions"] = len(gf.reactions)
-    #
-    #     # Get the number of unproducible targets
-    #     results["Unproducible targets"] = len(self.results_meneco["Unproducible targets"])
-    #
-    #     if verbose:
-    #         print("Evaluation results:")
-    #         for key, value in results.items():
-    #             print(f"\t{key}: {value}")
-    #
-    #     return results
-
     def evaluate_results(self, verbose=False):
         """
         Evaluate the results of the gap-filling algorithm.
@@ -213,3 +172,60 @@ class GapFiller:
 
         return results
 
+    def add_reactions_to_model(self, reactions: list[str]):
+        """
+        Add reactions to a model.
+
+        Parameters
+        ----------
+        reactions : list
+            A list of reactions to add to the model.
+        """
+        model = cobra.io.read_sbml_model(self.model_path)
+        uni_model = cobra.io.read_sbml_model(self.universal_model_path)
+
+        # create a set of reaction IDs in the universal model
+        uni_reactions = {reaction.id for reaction in uni_model.reactions}
+
+        # filter the input reactions to remove reactions not found in the universal model
+        reactions_to_add = [reaction for reaction in reactions if reaction.replace("R_", "") in uni_reactions]
+
+        # add the filtered reactions to the model
+        model.add_reactions(
+            [uni_model.reactions.get_by_id(reaction.replace("R_", "")) for reaction in reactions_to_add])
+
+        # run the cobra gap-filling algorithm
+        self.cobra_filled_model = cobra.flux_analysis.gapfilling.gapfill(model, self.universal_model,
+                                                                         demand_reactions=False)
+
+        return self.cobra_filled_model
+
+    def compare_reactions(self, initial_reactions, filled_model_reactions):
+        """
+        Compare the reactions in the initial model and the filled model.
+        Parameters
+        ----------
+        initial_reactions
+        filled_model_reactions
+
+        Returns
+        -------
+
+        """
+
+        initial_reactions_copy = [r.copy() for r in initial_reactions]  # create a copy of the initial reactions
+        initial_reactions_ids = [r.id for r in initial_reactions_copy]
+        filled_model_reactions_ids = [r.id for r in self.cobra_filled_model.reactions]
+
+        added_reactions = []
+        for reaction in filled_model_reactions_ids:
+            if reaction not in initial_reactions_ids:
+                added_reactions.append(reaction)
+
+        print(f"Added reactions: {added_reactions}")
+
+        return added_reactions
+
+# #in:
+# initial_reactions = gap_filler.model.reactions.copy()
+# filled_model = gap_filler.apply_gap_filling(gap_filler.results_meneco['One minimal completion'])
