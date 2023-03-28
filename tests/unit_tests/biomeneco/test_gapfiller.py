@@ -5,6 +5,7 @@ import io
 import cobra
 from src.gap_filling_dl.biomeneco.gapfiller import GapFiller
 import unittest.mock as mock
+from cobra import Reaction
 
 from tests import TEST_DIR
 
@@ -22,6 +23,11 @@ class TestGapFiller(unittest.TestCase):
         self.targets_path = os.path.join(TEST_DIR, "data/test_model/test_targets.xml")
 
         self.folder_path = os.path.join(TEST_DIR, "data/test_model")
+
+        self.model_copy_path = os.path.join(TEST_DIR, "data/test_model/model_toy_network_copy.xml")
+
+        # remove reactions frmo the copy
+        self.model_copy = cobra.io.read_sbml_model(self.model_copy_path)
 
     # def tearDown(self):
     #     # remove the mock files
@@ -141,6 +147,67 @@ class TestGapFiller(unittest.TestCase):
         with mock.patch('builtins.print') as mock_print:
             gap_filler.evaluate_results(verbose=True)
             mock_print.assert_called()
+
+    def test_add_reactions_to_model(self):
+        # reactions to remove:
+        reactions_to_remove = ["R00200__in", "R00703__in"]  # EX_C00267__in does not exist in the universal model
+        copy_model = cobra.io.read_sbml_model(self.model_copy_path)
+        copy_model.objective = 'e_Biomass__in'
+        # remove permenantly the reactions from the model:
+        for r_id in reactions_to_remove:
+            copy_model.reactions.get_by_id(r_id).remove_from_model()
+
+        # check if the reactions are in our model 'EX_C00267__in', 'R01061__in', 'R01015__in'
+        for r_id in reactions_to_remove:
+            self.assertNotIn(r_id, copy_model.reactions)
+
+        # add the reactions to the model
+        gap_filler = GapFiller(self.model_copy_path, self.universal_model_path)
+
+        gap_filler.add_reactions_to_model(reactions_to_remove)
+
+        # check if the reactions are in our model 'EX_C00267__in', 'R01061__in', 'R01015__in'
+        for r_id in reactions_to_remove:
+            self.assertIn(r_id, copy_model.reactions)
+
+    def test_compare_reactions(self):
+        # create initial model reactions
+        initial_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3")]
+
+        # create filled model reactions
+        filled_model_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3"), Reaction("R4"), Reaction("R5")]
+
+        # create GapFiller object
+        gap_filler = GapFiller(model_path=self.model_copy_path, universal_model_path=self.universal_model_path)
+        gap_filler.cobra_filled_model = mock.MagicMock()
+        gap_filler.cobra_filled_model.reactions = filled_model_reactions
+
+        # test added reactions
+        added_reactions = gap_filler.compare_reactions(initial_reactions, filled_model_reactions)
+        self.assertListEqual(added_reactions, ["R4", "R5"])
+
+        # test that initial_reactions has not been modified
+        initial_reactions_ids = [r.id for r in initial_reactions]
+        self.assertListEqual(initial_reactions_ids, ["R1", "R2", "R3"])
+
+    def test_compare_reactions_no_added_reactions(self):
+        # create initial model reactions
+        initial_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3")]
+        # create filled model reactions
+        filled_model_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3")]
+
+        # create GapFiller object
+        gap_filler = GapFiller(model_path=self.model_copy_path, universal_model_path=self.universal_model_path)
+        gap_filler.cobra_filled_model = mock.MagicMock()
+        gap_filler.cobra_filled_model.reactions = filled_model_reactions
+
+        # test added reactions
+        added_reactions = gap_filler.compare_reactions(initial_reactions, filled_model_reactions)
+        self.assertListEqual(added_reactions, [])
+
+        # test that initial_reactions has not been modified
+        initial_reactions_ids = [r.id for r in initial_reactions]
+        self.assertListEqual(initial_reactions_ids, ["R1", "R2", "R3"])
 
 
 if __name__ == '__main__':
