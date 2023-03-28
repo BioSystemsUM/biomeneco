@@ -1,8 +1,10 @@
 import os
-from typing import Tuple, List
+from typing import Tuple, List, Iterable
 import cobra
 from bioiso import BioISO
-from bioiso import load, set_solver
+from bioiso import set_solver
+from cobra import Reaction
+
 from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
 
@@ -17,13 +19,11 @@ class Model(cobra.Model):
         model.objective = objective_function
         return cls(model, objective_function_id=objective_function)
 
-
     def __str__(self):
         """
         Print the model summary.
         Returns a string with the model summary.
         -------
-
         """
 
         return self.summary()
@@ -90,7 +90,6 @@ class Model(cobra.Model):
         if not isinstance(solver, str) or not solver:
             raise ValueError("The solver must be a string.")
 
-
         # print(model.summary())
         set_solver(self, solver)
 
@@ -108,7 +107,8 @@ class Model(cobra.Model):
             biomass_component_analysis = biomass_components[biomass_component].get("analysis")
             if biomass_component_role == "Reactant" and not biomass_component_analysis:
                 specific_biomass_components = biomass_components[biomass_component].get("next")
-                if not specific_biomass_components and biomass_components[biomass_component].get("identifier") not in targets:
+                if not specific_biomass_components and biomass_components[biomass_component].get(
+                        "identifier") not in targets:
                     targets.append((biomass_components[biomass_component].get("identifier"),
                                     biomass_components[biomass_component].get("compartment")))
                 else:
