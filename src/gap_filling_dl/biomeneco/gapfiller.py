@@ -182,7 +182,7 @@ class GapFiller:
             A list of reactions to add to the model.
         """
         # model = cobra.io.read_sbml_model(self.model_path)
-        model = cobra.io.read_sbml_model('/Users/josediogomoura/gap_filling_dl/tests/data/new_toy_test.xml')
+        model = cobra.io.read_sbml_model('../../data/new_toy_test.xml')
         uni_model = cobra.io.read_sbml_model(self.universal_model_path)
 
         # # filter the input reactions to remove reactions not found in the universal model
