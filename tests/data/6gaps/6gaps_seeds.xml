@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version1/core" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2" sboTerm="SBO:0000624" level="3" version="1" fbc:required="false">
+  <model metaid="meta_model" fbc:strict="true">
+    <listOfUnitDefinitions>
+      <unitDefinition id="mmol_per_gDW_per_hr">
+        <listOfUnits>
+          <unit kind="mole" exponent="1" scale="-3" multiplier="1"/>
+          <unit kind="gram" exponent="-1" scale="0" multiplier="1"/>
+          <unit kind="second" exponent="-1" scale="0" multiplier="3600"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+    <listOfCompartments>
+      <compartment id="C_00001" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="M_C00001_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00262_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00124_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00140_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00106_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_Biomass_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00159_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00047_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00147_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00255_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00041_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00186_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00022_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00025_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00033_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00378_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00153_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00183_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00014_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C01330_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00011_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C03089_in_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00073_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00027_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00492_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00504_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00079_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00134_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00750_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00062_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00065_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00082_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C01762_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00135_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00188_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00243_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00288_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00864_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00148_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00009_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00266_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00058_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00097_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00152_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00089_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00064_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00078_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C01613_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00122_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00059_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00114_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00267_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00469_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00253_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00080_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00116_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00037_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00042_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00242_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00250_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C14818_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00392_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00407_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00007_out_b" compartment="C_00001" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter sboTerm="SBO:0000626" id="cobra_default_lb" value="-1000" constant="true"/>
+      <parameter sboTerm="SBO:0000626" id="cobra_default_ub" value="1000" constant="true"/>
+      <parameter sboTerm="SBO:0000626" id="cobra_0_bound" value="0" constant="true"/>
+      <parameter sboTerm="SBO:0000626" id="minus_inf" value="-INF" constant="true"/>
+      <parameter sboTerm="SBO:0000626" id="plus_inf" value="INF" constant="true"/>
+    </listOfParameters>
+    <fbc:listOfObjectives fbc:activeObjective="obj">
+      <fbc:objective fbc:id="obj" fbc:type="maximize"/>
+    </fbc:listOfObjectives>
+  </model>
+</sbml>
