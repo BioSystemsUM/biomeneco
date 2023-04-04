@@ -2,7 +2,6 @@ import os
 import time
 import cobra
 from meneco import run_meneco
-from cobra.flux_analysis.gapfilling import GapFiller
 
 
 class GapFiller:
@@ -225,6 +224,3 @@ class GapFiller:
 
         return added_reactions
 
-# #in:
-# initial_reactions = gap_filler.model.reactions.copy()
-# filled_model = gap_filler.apply_gap_filling(gap_filler.results_meneco['One minimal completion'])
