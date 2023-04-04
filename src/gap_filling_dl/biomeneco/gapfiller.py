@@ -180,16 +180,15 @@ class GapFiller:
         reactions : list
             A list of reactions to add to the model.
         """
-        # model = cobra.io.read_sbml_model(self.model_path)
-        model = cobra.io.read_sbml_model('../../data/new_toy_test.xml')
+        model = cobra.io.read_sbml_model(self.model_path)
         uni_model = cobra.io.read_sbml_model(self.universal_model_path)
 
-        # # filter the input reactions to remove reactions not found in the universal model
-        # reactions_to_add = [reaction for reaction in reactions if reaction.replace("R_", "") in uni_model.reactions]
-        #
-        # # add the filtered reactions to the model
-        # model.add_reactions(
-        #     [uni_model.reactions.get_by_id(reaction.replace("R_", "")) for reaction in reactions_to_add])
+        # filter the input reactions to remove reactions not found in the universal model
+        reactions_to_add = [reaction for reaction in reactions if reaction.replace("R_", "") in uni_model.reactions]
+
+        # add the filtered reactions to the model
+        model.add_reactions(
+            [uni_model.reactions.get_by_id(reaction.replace("R_", "")) for reaction in reactions_to_add])
 
         # run the cobra gap-filling algorithm
         self.cobra_filled_model = cobra.flux_analysis.gapfilling.gapfill(model, uni_model, demand_reactions=True,
@@ -197,30 +196,29 @@ class GapFiller:
 
         return self.cobra_filled_model
 
-    def compare_reactions(self, initial_reactions, filled_model_reactions):
+    def compare_reactions(self):
         """
         Compare the reactions in the initial model and the filled model.
         Parameters
         ----------
-        initial_reactions
-        filled_model_reactions
 
         Returns
         -------
 
         """
 
-        initial_reactions_copy = [r.copy() for r in initial_reactions]  # create a copy of the initial reactions
-        initial_reactions_ids = [r.id for r in initial_reactions_copy]  # get the IDs of the initial reactions
-        filled_model_reactions = [r.id for r in self.cobra_filled_model.reactions]  # get the IDs of the filled model reactions
+        # Get the reactions in the initial model
+        initial_reactions = cobra.io.read_sbml_model(self.model_path).reactions
 
-        # get the reactions that were added to the model
-        added_reactions = []
-        for reaction in filled_model_reactions_ids:
-            if reaction not in initial_reactions_ids:
-                added_reactions.append(reaction)
+        # Get the reactions in the filled model
+        filled_model_reactions = self.cobra_filled_model.reactions
 
-        print(f"Added reactions: {added_reactions}")
+        # Get the IDs of the reactions in each model
+        initial_reaction_ids = set(r.id for r in initial_reactions)
+        filled_model_reaction_ids = set(r.id for r in filled_model_reactions)
+
+        # Find the reactions that were added to the model during the gap-filling process
+        added_reactions = list(filled_model_reaction_ids - initial_reaction_ids)
 
         return added_reactions
 
