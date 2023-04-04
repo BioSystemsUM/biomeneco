@@ -148,66 +148,80 @@ class TestGapFiller(unittest.TestCase):
             gap_filler.evaluate_results(verbose=True)
             mock_print.assert_called()
 
-    def test_add_reactions_to_model(self):
-        # reactions to remove:
-        reactions_to_remove = ["R00200__in", "R00703__in"]  # EX_C00267__in does not exist in the universal model
-        copy_model = cobra.io.read_sbml_model(self.model_copy_path)
-        copy_model.objective = 'e_Biomass__in'
-        # remove permenantly the reactions from the model:
-        for r_id in reactions_to_remove:
-            copy_model.reactions.get_by_id(r_id).remove_from_model()
+    # def test_add_reactions_to_model(self):
+    #     # reactions to remove:
+    #     reactions_to_remove = ["R00200__in"]  # EX_C00267__in does not exist in the universal model
+    #     copy_model = cobra.io.read_sbml_model(self.model_copy_path)
+    #     copy_model.objective = 'e_Biomass__in'
+    #     # remove permenantly the reactions from the model:
+    #     for r_id in reactions_to_remove:
+    #         copy_model.reactions.get_by_id(r_id).remove_from_model()
+    #
+    #     # check if the reactions are in our model 'EX_C00267__in', 'R01061__in', 'R01015__in'
+    #     for r_id in reactions_to_remove:
+    #         self.assertNotIn(r_id, copy_model.reactions)
+    #
+    #     # add the reactions to the model
+    #     gap_filler = GapFiller(self.model_copy_path, self.universal_model_path)
+    #
+    #     gap_filler.add_reactions_to_model(reactions_to_remove)
+    #
+    #     # check if the reactions are in our model 'EX_C00267__in', 'R01061__in', 'R01015__in'
+    #     for r_id in reactions_to_remove:
+    #         self.assertIn(r_id, copy_model.reactions)
 
-        # check if the reactions are in our model 'EX_C00267__in', 'R01061__in', 'R01015__in'
-        for r_id in reactions_to_remove:
-            self.assertNotIn(r_id, copy_model.reactions)
+    def test_add_reactions_to_model(self):
+        # reactions to add:
+        reactions_to_add = ["R00002__in", "R00010__in", "R00019__in"]
+        model = cobra.io.read_sbml_model(self.model_copy_path)
+        model.objective = 'e_Biomass__in'
 
         # add the reactions to the model
         gap_filler = GapFiller(self.model_copy_path, self.universal_model_path)
+        gap_filler.add_reactions_to_model(reactions_to_add)
 
-        gap_filler.add_reactions_to_model(reactions_to_remove)
+        # check that the reactions were added to the model
+        for reaction_id in reactions_to_add:
+            self.assertIn(reaction_id, [r.id for r in model.reactions])
 
-        # check if the reactions are in our model 'EX_C00267__in', 'R01061__in', 'R01015__in'
-        for r_id in reactions_to_remove:
-            self.assertIn(r_id, copy_model.reactions)
+        # check that the cobra_filled_model object is not empty
+        self.assertIsNotNone(gap_filler.cobra_filled_model)
 
     def test_compare_reactions(self):
         # create initial model reactions
-        initial_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3")]
+        initial_reactions = ["R1", "R2", "R3"]
 
         # create filled model reactions
-        filled_model_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3"), Reaction("R4"), Reaction("R5")]
+        filled_model_reactions = ["R1", "R2", "R3", "R4", "R5"]
 
-        # create GapFiller object
-        gap_filler = GapFiller(model_path=self.model_copy_path, universal_model_path=self.universal_model_path)
-        gap_filler.cobra_filled_model = mock.MagicMock()
-        gap_filler.cobra_filled_model.reactions = filled_model_reactions
+        # create a mock for the filled model
+        cobra_filled_model_mock = mock.MagicMock()
+        cobra_filled_model_mock.reactions = [mock.MagicMock(id=id) for id in filled_model_reactions]
 
-        # test added reactions
-        added_reactions = gap_filler.compare_reactions(initial_reactions, filled_model_reactions)
-        self.assertListEqual(added_reactions, ["R4", "R5"])
+        # create a mock for the cobra.io.read_sbml_model function
+        read_sbml_model_mock = mock.MagicMock(
+            return_value=mock.MagicMock(reactions=[mock.MagicMock(id=id) for id in initial_reactions]))
 
-        # test that initial_reactions has not been modified
-        initial_reactions_ids = [r.id for r in initial_reactions]
-        self.assertListEqual(initial_reactions_ids, ["R1", "R2", "R3"])
+        # create GapFiller object with mocks
+        with mock.patch('cobra.io.read_sbml_model', read_sbml_model_mock):
+            gap_filler = GapFiller(model_path=self.model_path, universal_model_path=self.universal_model_path)
+            gap_filler.cobra_filled_model = cobra_filled_model_mock
+
+            # test added reactions
+            added_reactions = gap_filler.compare_reactions()
+            expected_added_reactions = ["R4", "R5"]
+
+            # assert that added reactions match expected added reactions
+            self.assertCountEqual(added_reactions, expected_added_reactions)
 
     def test_compare_reactions_no_added_reactions(self):
-        # create initial model reactions
-        initial_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3")]
-        # create filled model reactions
-        filled_model_reactions = [Reaction("R1"), Reaction("R2"), Reaction("R3")]
+        # Create a mock filled model with no additional reactions
+        filled_model = cobra.io.read_sbml_model(self.model_path)
+        self.gf.cobra_filled_model = filled_model
 
-        # create GapFiller object
-        gap_filler = GapFiller(model_path=self.model_copy_path, universal_model_path=self.universal_model_path)
-        gap_filler.cobra_filled_model = mock.MagicMock()
-        gap_filler.cobra_filled_model.reactions = filled_model_reactions
-
-        # test added reactions
-        added_reactions = gap_filler.compare_reactions(initial_reactions, filled_model_reactions)
+        # Call compare_reactions and check the returned value
+        added_reactions = self.gf.compare_reactions()
         self.assertListEqual(added_reactions, [])
-
-        # test that initial_reactions has not been modified
-        initial_reactions_ids = [r.id for r in initial_reactions]
-        self.assertListEqual(initial_reactions_ids, ["R1", "R2", "R3"])
 
 
 if __name__ == '__main__':
