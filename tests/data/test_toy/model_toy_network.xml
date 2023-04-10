@@ -1,0 +1,1012 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!-- Created by merlin - www.merlin-sysbio.org version 4.0.12-RELEASE on 2023-03-07 at 15:55:08 GMT with JSBML version 1.5. -->
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" fbc:required="false" groups:required="false" level="3" version="2" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2" xmlns:groups="http://www.sbml.org/sbml/level3/version1/groups/version1">
+  <model fbc:strict="true" id="model_toy_network" metaid="_9ed3f906-c7fd-40b1-b274-c66a68011dc7" name="model_toy_network">
+    <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_9ed3f906-c7fd-40b1-b274-c66a68011dc7">
+	<bqbiol:hasTaxon>
+	<rdf:Bag>
+	<rdf:li rdf:resource="12345"/>
+	</rdf:Bag>
+	</bqbiol:hasTaxon>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+      <groups:listOfGroups xmlns:groups="http://www.sbml.org/sbml/level3/version1/groups/version1">
+      <groups:group groups:id="g1" groups:kind="partonomy" groups:name="Drains pathway">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_EX_C00009__in"/>
+          <groups:member groups:idRef="R_EX_C00080__in"/>
+          <groups:member groups:idRef="R_EX_C00186__in"/>
+          <groups:member groups:idRef="R_EX_C00267__in"/>
+          <groups:member groups:idRef="R_EX_C00007__in"/>
+          <groups:member groups:idRef="R_EX_C00001__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g2" groups:kind="partonomy" groups:name="Glycine, serine and threonine metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R01518__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g3" groups:kind="partonomy" groups:name="Fructose and mannose metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g4" groups:kind="partonomy" groups:name="Biosynthesis of nucleotide sugars">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g5" groups:kind="partonomy" groups:name="Biosynthesis of secondary metabolites">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R00703__in"/>
+          <groups:member groups:idRef="R_R00086__in"/>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g6" groups:kind="partonomy" groups:name="Amino sugar and nucleotide sugar metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g7" groups:kind="partonomy" groups:name="Microbial metabolism in diverse environments">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R00703__in"/>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g8" groups:kind="partonomy" groups:name="Methane metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g9" groups:kind="partonomy" groups:name="Pyruvate metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00703__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g10" groups:kind="partonomy" groups:name="Transporters pathway">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_T_H2O__mem"/>
+          <groups:member groups:idRef="R_T_Pi__mem"/>
+          <groups:member groups:idRef="R_T_Glc6P__mem"/>
+          <groups:member groups:idRef="R_T_H___mem"/>
+          <groups:member groups:idRef="R_T_Oxygen__mem"/>
+          <groups:member groups:idRef="R_T_Lactate__mem"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g11" groups:kind="partonomy" groups:name="Carbon fixation in photosynthetic organisms">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g12" groups:kind="partonomy" groups:name="Nucleotide metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00086__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g13" groups:kind="partonomy" groups:name="Purine metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00086__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g14" groups:kind="partonomy" groups:name="Biosynthesis of amino acids">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g15" groups:kind="partonomy" groups:name="Glycolysis / Gluconeogenesis">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R00703__in"/>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g16" groups:kind="partonomy" groups:name="Pentose phosphate pathway">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g17" groups:kind="partonomy" groups:name="Carbon metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g18" groups:kind="partonomy" groups:name="Metabolic pathways">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R00658__in"/>
+          <groups:member groups:idRef="R_R00703__in"/>
+          <groups:member groups:idRef="R_R00086__in"/>
+          <groups:member groups:idRef="R_R01512__in"/>
+          <groups:member groups:idRef="R_R01061__in"/>
+          <groups:member groups:idRef="R_R01015__in"/>
+          <groups:member groups:idRef="R_R04779__in"/>
+          <groups:member groups:idRef="R_R02740__in"/>
+          <groups:member groups:idRef="R_R01786__in"/>
+          <groups:member groups:idRef="R_R01070__in"/>
+          <groups:member groups:idRef="R_R01518__in"/>
+          <groups:member groups:idRef="R_R00200__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g19" groups:kind="partonomy" groups:name="Inositol phosphate metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R01015__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+      <groups:group groups:id="g20" groups:kind="partonomy" groups:name="Galactose metabolism">
+        <groups:listOfMembers>
+          <groups:member groups:idRef="R_R01786__in"/>
+        </groups:listOfMembers>
+      </groups:group>
+    </groups:listOfGroups>
+    <listOfUnitDefinitions>
+      <unitDefinition id="mmol_per_gDW_per_hr" name="Millimoles per gram (dry weight) per hour">
+        <listOfUnits>
+          <unit exponent="1" kind="mole" multiplier="1" scale="-3"/>
+          <unit exponent="-1" kind="gram" multiplier="1" scale="0"/>
+          <unit exponent="-1" kind="second" multiplier="3600" scale="0"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="substance" name="Millimoles per gram (dry weight)">
+        <listOfUnits>
+          <unit exponent="1" kind="mole" multiplier="1" scale="-3"/>
+          <unit exponent="-1" kind="gram" multiplier="1" scale="0"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="time" name="Hour">
+        <listOfUnits>
+          <unit exponent="1" kind="second" multiplier="3600" scale="0"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+    <listOfCompartments>
+      <compartment constant="true" id="C_00001" name="outside"/>
+      <compartment constant="true" id="C_00002" name="inside"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species boundaryCondition="false" compartment="C_00001" constant="false" fbc:charge="0" fbc:chemicalFormula="O2" hasOnlySubstanceUnits="false" id="M_C00007__out" initialAmount="1" metaid="_5ab5425b-a295-4289-9911-8f93ae202861" name="Oxygen">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_5ab5425b-a295-4289-9911-8f93ae202861">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00007"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00001" constant="false" fbc:charge="0" fbc:chemicalFormula="H" hasOnlySubstanceUnits="false" id="M_C00080__out" initialAmount="1" metaid="_6ceb38e1-5e0e-46fd-8f1b-2c7d49a459b5" name="H+">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_6ceb38e1-5e0e-46fd-8f1b-2c7d49a459b5">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00080"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00001" constant="false" fbc:charge="0" fbc:chemicalFormula="C6H12O6" hasOnlySubstanceUnits="false" id="M_C00267__out" initialAmount="1" metaid="_3a831e66-876f-4f9c-ade7-328dbec05b25" name="alpha-D-Glucose">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_3a831e66-876f-4f9c-ade7-328dbec05b25">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00267"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00001" constant="false" fbc:charge="0" fbc:chemicalFormula="H2O" hasOnlySubstanceUnits="false" id="M_C00001__out" initialAmount="1" metaid="_7448f952-e455-4aaa-974e-31575dde8f8b" name="H2O">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_7448f952-e455-4aaa-974e-31575dde8f8b">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00001"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00001" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H6O3" hasOnlySubstanceUnits="false" id="M_C00186__out" initialAmount="1" metaid="_015947bf-b911-43fa-abdf-f62e80b8dddb" name="(S)-Lactate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_015947bf-b911-43fa-abdf-f62e80b8dddb">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00186"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00001" constant="false" fbc:charge="0" fbc:chemicalFormula="H3PO4" hasOnlySubstanceUnits="false" id="M_C00009__out" initialAmount="1" metaid="db9908d7-839d-4461-b757-b7efd0fc745b" name="Orthophosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#db9908d7-839d-4461-b757-b7efd0fc745b">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00009"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="H2O" hasOnlySubstanceUnits="false" id="M_C00001__in" initialAmount="1" metaid="_89617125-7b88-42b3-8937-7f2067bbcd35" name="H2O">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_89617125-7b88-42b3-8937-7f2067bbcd35">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00001"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H5O6P" hasOnlySubstanceUnits="false" id="M_C00074__in" initialAmount="1" metaid="_378b3049-c0c7-41e8-8a36-468fb01907f6" name="Phosphoenolpyruvate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_378b3049-c0c7-41e8-8a36-468fb01907f6">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00074"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H7O7P" hasOnlySubstanceUnits="false" id="M_C00631__in" initialAmount="1" metaid="bd192843-793d-4e4b-b073-2749f6b3036c" name="2-Phospho-D-glycerate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#bd192843-793d-4e4b-b073-2749f6b3036c">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00631"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="H" hasOnlySubstanceUnits="false" id="M_C00080__in" initialAmount="1" metaid="_38a2cf1a-3c4c-4b6c-8949-4a19c5fab7ac" name="H+">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_38a2cf1a-3c4c-4b6c-8949-4a19c5fab7ac">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00080"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C10H15N5O10P2" hasOnlySubstanceUnits="false" id="M_C00008__in" initialAmount="1" metaid="_49381a98-5374-4c40-949c-d0bfcb4e2355" name="ADP">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_49381a98-5374-4c40-949c-d0bfcb4e2355">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00008"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C6H12O6" hasOnlySubstanceUnits="false" id="M_C00267__in" initialAmount="1" metaid="ea87d247-4b61-46b4-b8ae-a3e8b2ab57b5" name="alpha-D-Glucose">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#ea87d247-4b61-46b4-b8ae-a3e8b2ab57b5">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00267"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H7O6P" hasOnlySubstanceUnits="false" id="M_C00111__in" initialAmount="1" metaid="ac5a2b55-a3ea-4795-a6df-6ac85ee8ac44" name="Glycerone phosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#ac5a2b55-a3ea-4795-a6df-6ac85ee8ac44">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00111"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C21H28N7O14P2" hasOnlySubstanceUnits="false" id="M_C00003__in" initialAmount="1" metaid="_00d00a61-b31e-4f8b-bae5-f214c1ae15a3" name="NAD+">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_00d00a61-b31e-4f8b-bae5-f214c1ae15a3">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00003"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C6H13O9P" hasOnlySubstanceUnits="false" id="M_C00668__in" initialAmount="1" metaid="d6b244ab-0554-4661-abbf-45d9a08a2956" name="alpha-D-Glucose 6-phosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#d6b244ab-0554-4661-abbf-45d9a08a2956">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00668"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C6H13O9P" hasOnlySubstanceUnits="false" id="M_C05345__in" initialAmount="1" metaid="_7b96b905-f08a-433d-a8e4-cc7fd41350a6" name="beta-D-Fructose 6-phosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_7b96b905-f08a-433d-a8e4-cc7fd41350a6">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C05345"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H7O6P" hasOnlySubstanceUnits="false" id="M_C00118__in" initialAmount="1" metaid="_7f9cd7a1-8b84-4ccf-9096-10c0ed8299f1" name="D-Glyceraldehyde 3-phosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_7f9cd7a1-8b84-4ccf-9096-10c0ed8299f1">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00118"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="O2" hasOnlySubstanceUnits="false" id="M_C00007__in" initialAmount="1" metaid="c56b600e-3e64-4019-8be2-ca6c2a8c00ba" name="Oxygen">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#c56b600e-3e64-4019-8be2-ca6c2a8c00ba">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00007"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C6H14O12P2" hasOnlySubstanceUnits="false" id="M_C05378__in" initialAmount="1" metaid="_49740804-be14-4fdb-82ce-6bf294c195b9" name="beta-D-Fructose 1,6-bisphosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_49740804-be14-4fdb-82ce-6bf294c195b9">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C05378"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C10H16N5O13P3" hasOnlySubstanceUnits="false" id="M_C00002__in" initialAmount="1" metaid="c1be7732-6f76-46c1-9e8a-a84fabeb1e12" name="ATP">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#c1be7732-6f76-46c1-9e8a-a84fabeb1e12">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00002"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C21H29N7O14P2" hasOnlySubstanceUnits="false" id="M_C00004__in" initialAmount="1" metaid="_38549b5b-7705-43be-9af9-2b2d424b796b" name="NADH">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_38549b5b-7705-43be-9af9-2b2d424b796b">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00004"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H4O3" hasOnlySubstanceUnits="false" id="M_C00022__in" initialAmount="1" metaid="e85b9228-c076-4a80-84fa-131f3ed6501c" name="Pyruvate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#e85b9228-c076-4a80-84fa-131f3ed6501c">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00022"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H6O3" hasOnlySubstanceUnits="false" id="M_C00186__in" initialAmount="1" metaid="f3003594-aead-486d-861b-4b854db1ee01" name="(S)-Lactate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#f3003594-aead-486d-861b-4b854db1ee01">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00186"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="H3PO4" hasOnlySubstanceUnits="false" id="M_C00009__in" initialAmount="1" metaid="bb6ebcf6-7eda-47b6-9dec-91f0be4a98c4" name="Orthophosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#bb6ebcf6-7eda-47b6-9dec-91f0be4a98c4">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00009"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H8O10P2" hasOnlySubstanceUnits="false" id="M_C00236__in" initialAmount="1" metaid="_2b25b811-aa4e-421c-b2c0-eda0823db2fd" name="3-Phospho-D-glyceroyl phosphate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_2b25b811-aa4e-421c-b2c0-eda0823db2fd">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00236"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+      <species boundaryCondition="false" compartment="C_00002" constant="false" fbc:charge="0" fbc:chemicalFormula="C3H7O7P" hasOnlySubstanceUnits="false" id="M_C00197__in" initialAmount="1" metaid="bab2da08-3e52-4c87-be32-66b8bc019416" name="3-Phospho-D-glycerate">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#bab2da08-3e52-4c87-be32-66b8bc019416">
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.compound/C00197"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+            </species>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter constant="true" id="merlin_defaulLB" name="merlin_default_lowerBound" value="-1000"/>
+      <parameter constant="true" id="merlin_0_bound" name="merlin_0_bound" value="0"/>
+      <parameter constant="true" id="merlin_defaulUB" name="merlin_default_upperBound" value="1000"/>
+      <parameter constant="true" id="R_EX_C00267__in_lb" name="alpha-D-Glucose &lt;=>  lower bound" value="-10"/>
+      <parameter constant="true" id="R_EX_C00007__in_lb" name="Oxygen &lt;=>  lower bound" value="-5"/>
+    </listOfParameters>
+    <listOfReactions>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R00658__in" metaid="dd998581-a216-4618-a59a-345988bcba27" name="2-Phospho-D-glycerate &lt;=> Phosphoenolpyruvate + H2O" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#dd998581-a216-4618-a59a-345988bcba27">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/4.2.1.11"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R00658"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00631__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00001__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00074__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_R10517__in" metaid="_1852efdd-ece5-4f28-a6c8-3a678256e389" name="2 NADH + 2 H+ + Oxygen => 2 NAD+ + 2 H2O" reversible="false">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_1852efdd-ece5-4f28-a6c8-3a678256e389">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/1.6.3.4"/>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/1.6.3.2"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R10517"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00007__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00080__in" stoichiometry="2"/>
+          <speciesReference constant="true" species="M_C00004__in" stoichiometry="2"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00001__in" stoichiometry="2"/>
+          <speciesReference constant="true" species="M_C00003__in" stoichiometry="2"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_EX_C00009__in" name="Drain to Orthophosphate" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00009__out" stoichiometry="1"/>
+        </listOfReactants>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R00703__in" metaid="e5db1b95-c654-4119-8d97-bfe515825dc7" name="(S)-Lactate + NAD+ &lt;=> Pyruvate + NADH + H+" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#e5db1b95-c654-4119-8d97-bfe515825dc7">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/1.1.1.27"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R00703"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00003__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00186__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00080__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00004__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00022__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_e_Biomass__in" name="ATP + H2O + Pyruvate => Orthophosphate + ADP" reversible="false">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00001__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00002__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00022__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00008__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00009__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_T_H2O__mem" name="H2O (in) &lt;=> H2O (out)" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00001__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00001__out" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_EX_C00080__in" name="Drain to H+" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00080__out" stoichiometry="1"/>
+        </listOfReactants>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_EX_C00186__in" name="Drain to (S)-Lactate" reversible="false">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00186__out" stoichiometry="1"/>
+        </listOfReactants>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_R00086__in" metaid="cf975925-4e71-444d-93f2-86b9ee754143" name="ATP + H2O => ADP + Orthophosphate" reversible="false">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#cf975925-4e71-444d-93f2-86b9ee754143">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/3.6.1.8"/>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/3.6.1.15"/>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/3.6.1.5"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R00086"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00001__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00002__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00008__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00009__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="R_EX_C00267__in_lb" fbc:upperFluxBound="merlin_defaulUB" id="R_EX_C00267__in" name="alpha-D-Glucose &lt;=> " reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00267__out" stoichiometry="1"/>
+        </listOfReactants>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R01512__in" metaid="_72c9b777-7412-4bd3-99f0-eb2a06db375d" name="ATP + 3-Phospho-D-glycerate &lt;=> ADP + 3-Phospho-D-glyceroyl phosphate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_72c9b777-7412-4bd3-99f0-eb2a06db375d">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/2.7.2.3"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R01512"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00002__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00197__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00008__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00236__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="R_EX_C00007__in_lb" fbc:upperFluxBound="merlin_defaulUB" id="R_EX_C00007__in" name="Oxygen &lt;=> " reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00007__out" stoichiometry="1"/>
+        </listOfReactants>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_R01061__in" metaid="_4ed179cb-de16-48cb-9538-1dc56d9ce504" name="D-Glyceraldehyde 3-phosphate + Orthophosphate + NAD+ => 3-Phospho-D-glyceroyl phosphate + NADH + H+" reversible="false">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_4ed179cb-de16-48cb-9538-1dc56d9ce504">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/1.2.1.12"/>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/1.2.1.59"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R01061"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00003__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00009__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00118__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00080__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00004__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00236__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R01015__in" metaid="a12e6453-5695-48ea-8927-1cc23cde3013" name="D-Glyceraldehyde 3-phosphate &lt;=> Glycerone phosphate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#a12e6453-5695-48ea-8927-1cc23cde3013">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/5.3.1.1"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R01015"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00118__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00111__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_T_Pi__mem" name="Orthophosphate (in) &lt;=> Orthophosphate (out)" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00009__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00009__out" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_T_Glc6P__mem" name="alpha-D-Glucose (out) => alpha-D-Glucose (in)" reversible="false">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00267__out" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00267__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R04779__in" metaid="d22619fc-816e-4100-b399-cd4f3b6d9c49" name="ATP + beta-D-Fructose 6-phosphate &lt;=> ADP + beta-D-Fructose 1,6-bisphosphate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#d22619fc-816e-4100-b399-cd4f3b6d9c49">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/2.7.1.11"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R04779"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00002__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C05345__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C05378__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00008__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_T_H___mem" name="H+ (in) &lt;=> H+ (out)" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00080__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00080__out" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R02740__in" metaid="_480b5e0f-3e8a-42d4-b97a-0cec5930f151" name="alpha-D-Glucose 6-phosphate &lt;=> beta-D-Fructose 6-phosphate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_480b5e0f-3e8a-42d4-b97a-0cec5930f151">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/5.3.1.9"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R02740"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00668__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C05345__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_0_bound" fbc:upperFluxBound="merlin_defaulUB" id="R_R01786__in" metaid="beb287fc-0bc1-454e-9baf-1a820202b138" name="ATP + alpha-D-Glucose => ADP + alpha-D-Glucose 6-phosphate" reversible="false">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#beb287fc-0bc1-454e-9baf-1a820202b138">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/2.7.1.1"/>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/2.7.1.2"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R01786"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00267__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00002__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00008__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00668__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R01070__in" metaid="_337d3644-c6ff-475b-bf7f-3fd22367dba4" name="beta-D-Fructose 1,6-bisphosphate &lt;=> Glycerone phosphate + D-Glyceraldehyde 3-phosphate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_337d3644-c6ff-475b-bf7f-3fd22367dba4">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/4.1.2.13"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R01070"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C05378__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00111__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00118__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R01518__in" metaid="_7a4f1e26-47c8-488b-a15a-ab2b35168ba8" name="2-Phospho-D-glycerate &lt;=> 3-Phospho-D-glycerate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#_7a4f1e26-47c8-488b-a15a-ab2b35168ba8">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/5.4.2.12"/>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/5.4.2.11"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R01518"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00631__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00197__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_T_Oxygen__mem" name="Oxygen (in) &lt;=> Oxygen (out)" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00007__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00007__out" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_R00200__in" metaid="a04eac1f-eab9-4b6a-bc51-df099a9b9c25" name="ATP + Pyruvate &lt;=> ADP + Phosphoenolpyruvate" reversible="true">
+        <annotation>
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+	<rdf:Description rdf:about="#a04eac1f-eab9-4b6a-bc51-df099a9b9c25">
+              <bqbiol:isRelatedTo>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/ec-code/2.7.1.40"/>
+	</rdf:Bag>
+	</bqbiol:isRelatedTo>
+	
+	<bqbiol:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/kegg.reaction/R00200"/>
+	</rdf:Bag>
+	</bqbiol:is>
+	</rdf:Description>
+	</rdf:RDF>
+	</annotation>
+              <listOfReactants>
+          <speciesReference constant="true" species="M_C00002__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00022__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00074__in" stoichiometry="1"/>
+          <speciesReference constant="true" species="M_C00008__in" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_EX_C00001__in" name="Drain to H2O" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00001__out" stoichiometry="1"/>
+        </listOfReactants>
+      </reaction>
+      <reaction fbc:lowerFluxBound="merlin_defaulLB" fbc:upperFluxBound="merlin_defaulUB" id="R_T_Lactate__mem" name="(S)-Lactate (in) &lt;=> (S)-Lactate (out)" reversible="true">
+        <listOfReactants>
+          <speciesReference constant="true" species="M_C00186__in" stoichiometry="1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference constant="true" species="M_C00186__out" stoichiometry="1"/>
+        </listOfProducts>
+      </reaction>
+    </listOfReactions>
+  </model>
+</sbml>

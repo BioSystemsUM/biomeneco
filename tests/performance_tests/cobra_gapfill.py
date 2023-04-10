@@ -19,5 +19,3 @@ class TestCobraGapfill(TestCase):
         elapsed_time = final_time - initial_time
         print(f"Elapsed time: {elapsed_time} seconds")
         print(reactions_to_add)
-
-

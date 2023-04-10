@@ -23,7 +23,7 @@ write_metabolites_to_sbml(os.path.join(EXAMPLES_DIR, "data", "temp_seeds.xml"), 
 start = time.time()
 temp_seeds_path = os.path.join(EXAMPLES_DIR, "data", "temp_seeds.xml")
 temp_targets_path = os.path.join(EXAMPLES_DIR, "data", "temp_targets.xml")
-temp_universal_model = os.path.join(EXAMPLES_DIR, "data", "kegg_universal_model.xml")
+temp_universal_model = os.path.join(EXAMPLES_DIR, "data", "universal_model_kegg.xml")
 
 result = run_meneco(draftnet=model_path,
                     seeds=temp_seeds_path,

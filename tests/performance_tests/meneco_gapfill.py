@@ -30,3 +30,5 @@ class TestGapFiller(unittest.TestCase):
         self.assertTrue(isinstance(results["Reconstructable targets"], list))
 
 
+if __name__ == '__main__':
+    unittest.main()

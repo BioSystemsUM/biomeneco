@@ -14,12 +14,7 @@
       <compartment id="C_00002" constant="true"/>
     </listOfCompartments>
     <listOfSpecies>
-      <species id="M_e_Protein_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_e_CellWall_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C06042_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_e_DNA_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C01356_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_e_Cofactor_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>
       <parameter sboTerm="SBO:0000626" id="cobra_default_lb" value="-1000" constant="true"/>

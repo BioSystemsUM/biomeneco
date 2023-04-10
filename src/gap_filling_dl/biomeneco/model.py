@@ -5,11 +5,14 @@ from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
 
+from gap_filling_dl.biomeneco.utils import get_metabolite_pathway_map, get_reaction_pathway_map
 from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
 
 class Model(cobra.Model):
     def __init__(self, model: cobra.Model, objective_function_id, *args, **kwargs):
+        self.reaction_pathway_map = get_reaction_pathway_map(model)
+        self.metabolite_pathway_map = get_metabolite_pathway_map(model)
         self.objective_function_id = objective_function_id
         super().__init__(id_or_model=model, *args, **kwargs)
 
@@ -141,7 +144,8 @@ class Model(cobra.Model):
         targets: Boolean
             A list of tuples of target metabolite IDs and compartments.
         """
-
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         if seeds:  # if the user wants to save the seeds.xml
             seeds_file_name = os.path.splitext(file_name)[0] + "_seeds.xml"
             write_metabolites_to_sbml(seeds_file_name, save_path, self.seeds)

@@ -5,7 +5,7 @@ import time
 from gap_filling_dl.my_classes import Model, GapFiller, write_metabolites_to_sbml
 
 model_path = '/Users/josediogomoura/gap_filling_dl/tests/performance_tests/data/models/iDS372.xml'
-universal_model_path = '/Users/josediogomoura/gap_filling_dl/tests/performance_tests/data/kegg_universal_model.xml'
+universal_model_path = '/Users/josediogomoura/gap_filling_dl/tests/performance_tests/data/universal_model_kegg.xml'
 
 model = Model(model_path)
 
