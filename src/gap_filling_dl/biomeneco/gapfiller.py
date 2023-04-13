@@ -133,14 +133,22 @@ class GapFiller:
         # create a temporary universal model if necessary
 
         if temporary_universal_model:
+            if not objective_function_id:
+                raise ValueError("Objective function ID must be specified for the creation of a temporary universal "
+                                 "model.")
+
             pathways_to_ignore = []
             pathways_to_keep = []
 
             # create a Model object
-            my_model = Model(model=gap_filler.model_path, objective_function_id=objective_function_id)
+            read_model = read_sbml_model(gap_filler.model_path)
+            my_model = Model(model=read_model, objective_function_id=objective_function_id)
 
             # get the pathways to ignore
-            for target in gap_filler.targets_path:
+
+            # read the targets as .XML file
+            targets = read_sbml_model(gap_filler.targets_path)
+            for target in targets.metabolites:
                 pathways_to_keep += [pathway for pathway in my_model.metabolite_pathway_map[target[0]]]
             pathways_to_keep = list(set(pathways_to_keep))
             print('Pathways to keep are:', pathways_to_keep)
@@ -156,9 +164,16 @@ class GapFiller:
             universal_model.remove_reactions(list(to_remove), remove_orphans=True)
             print('Number of reactions in temporary universal model:', len(universal_model.reactions))
 
-            # overwrite the universal model file? or create a new one?
-            write_sbml_model(universal_model, os.path.join(folder_path, 'universal_model.xml'))
-            gap_filler.universal_model_path = os.path.join(folder_path, 'universal_model.xml')
+            # create a new model or overwrite the old one?
+            # here we are creating a new file called temporary_universal_model.xml
+            write_sbml_model(universal_model, os.path.join(folder_path, 'temporary_universal_model.xml'))
+
+            if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
+                print('Temporary universal model file successfully created.'
+                      'Now the temporary universal model is ready to be used.')
+                gap_filler.universal_model_path = os.path.join(folder_path, 'temporary_universal_model.xml')
+            else:
+                raise FileNotFoundError("Temporary universal model file not found.")
 
         return gap_filler
 
