@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 import os
 from unittest.mock import patch, MagicMock, mock_open
@@ -222,6 +223,18 @@ class TestGapFiller(unittest.TestCase):
         # Call compare_reactions and check the returned value
         added_reactions = self.gf.compare_reactions()
         self.assertListEqual(added_reactions, [])
+
+    def test_from_folder_temporary_universal_model_True(self):
+        objective = 'e_Biomass__in'
+        # create object with folder
+        gap_filler = GapFiller.from_folder(self.folder_path, temporary_universal_model=True,
+                                           objective_function_id=objective)
+
+        # check that the universal model is not None
+        self.assertIsNotNone(gap_filler.universal_model)
+
+        # check if the temporary universal model was created. "temporary_universal_model" is the default name
+        self.assertTrue(os.path.exists(os.path.join(self.folder_path, "temporary_universal_model.xml")))
 
 
 if __name__ == '__main__':
