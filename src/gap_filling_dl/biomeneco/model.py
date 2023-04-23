@@ -135,18 +135,16 @@ class Model(cobra.Model):
 
     def to_sbml(self, file_name: str, save_path: str, seeds=True, targets=True):
         """
-        Write a model to an SBML file.
+        Save the model to SBML.
 
-        Parameters
-        ----------
-        file_name: str
-            The name of the SBML file to write to.
-        save_path: str
-            The path to save the SBML file to.
-        seeds: Boolean
-            A list of tuples of seed metabolite IDs and compartments.
-        targets: Boolean
-            A list of tuples of target metabolite IDs and compartments.
+        Args:
+            file_name: The name of the SBML file.
+            save_path: The path to the folder where the SBML file will be saved.
+            seeds: Whether to save the seeds of the model.
+            targets: Whether to save the targets of the model.
+
+        Returns:
+            None
         """
         if not os.path.exists(save_path):
             os.makedirs(save_path)
@@ -163,14 +161,16 @@ class Model(cobra.Model):
         """Create random knockout models.
 
         Args:
-            num_models: The number of models to create.
-            min_knockouts: The minimum number of knockouts.
-            max_knockouts: The maximum number of knockouts.
-            generate_files: Whether to generate SBML files for the models.
-            parent_folder: The parent folder to save the models to.
-            seeds_targets: Whether to save the seeds and targets of the models.
+            num_models: The number of knockout models to create.
+            min_knockouts: The minimum number of knockouts to create.
+            max_knockouts: The maximum number of knockouts to create.
+            generate_files: Whether to generate SBML files for the knockout models.
+            parent_folder: The parent folder to save the SBML files to.
+            seeds_targets: Whether to include the seeds and targets in the SBML files.
+            universal_model: The path to the universal model.
 
         Returns:
+            A list of random knockout models.
 
         """
 
