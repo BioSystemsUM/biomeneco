@@ -5,19 +5,27 @@ from src.gap_filling_dl.biomeneco.gapfiller import GapFiller
 from tests import TEST_DIR
 
 
+def print_or_write(text, file=None):
+    if file:
+        file.write(text + "\n")
+    else:
+        print(text)
+
+
 class TestGapFiller(unittest.TestCase):
     def setUp(self):
-        self.gf = GapFiller.from_folder(os.path.join(TEST_DIR, "data/6gaps"))
+        # self.gf = GapFiller.from_folder(os.path.join(TEST_DIR, "data/6gaps"))
+
         self.reactions_removed = {
-            "model_1": ['R00939_C3_in', 'R03191_C3_in', 'R03066_C3_in', 'R04230_C3_in'],
-            "model_2": ['R04440_C3_in', 'R04960_C3_in', 'R01466_C3_in', 'R04954_C3_in', 'R02016_C3_in'],
-            "model_3": ['R01231_C3_in', 'R01230_C3_in', 'R01528_C3_in', 'R02749_C3_in'],
-            "model_4": ['R01819_C3_in'],
-            "model_5": ['R00694_C3_in', 'R00566_C3_in', 'R00228_C3_in', 'R00619_C3_in'],
-            "model_6": ['R02739_C3_in', 'R03346_C3_in', 'R05070_C3_in', 'R01863_C3_in', 'R00802_C3_in'],
+            'model_1': ['R00161_C3_in', 'R02023_C3_in', 'R01021_C3_in'],
+            'model_2': ['R01416_C3_in'],
+            'model_3': ['R00200_C3_in', 'R00462_C3_in'],
+            'model_4': ['R00248_C3_in', 'R02689_C3_in'],
+            'model_5': ['R01978_C3_in'],
+            'model_6': ['R03236_C3_in', 'R00549_C3_in', 'R04364_C3_in', 'R01134_C3_in', 'R01665_C3_in', 'R03066_C3_in']
         }
 
-        self.models_folder = os.path.join(TEST_DIR, "data/original_model")
+        self.models_folder = '/Users/josediogomoura/gap_filling_dl/tests/data/original_model'
 
     def test_performance_meneco(self):
         start_time = time.time()
@@ -39,24 +47,52 @@ class TestGapFiller(unittest.TestCase):
         self.assertTrue(isinstance(results["Unreconstructable targets"], list))
         self.assertTrue(isinstance(results["Reconstructable targets"], list))
 
-    def test_performance_meneco_manymodels(self):
+    def test_performance_meneco_folders(self):
+        self.results = {}
+
         for model_name in sorted(os.listdir(self.models_folder)):
-            print(f"Running GapFiller for {model_name}")
-            model_folder = os.path.join(self.models_folder, model_name)
-            gf = GapFiller.from_folder(model_folder)
+            # list all the files in the directory
+            try:
 
-            start_time = time.time()
-            results = gf.run(enumeration=True, json_output=True)
-            end_time = time.time()
-            elapsed_time = end_time - start_time
+                if not model_name.startswith('model_'):
+                    continue
+                model_folder = os.path.join(self.models_folder, model_name)
+                if os.path.isdir(model_folder):
+                    print('model_folder: ', model_folder)
 
-            print(f"Time taken for {model_name}: {elapsed_time}")
-            print(f"Results for {model_name}:")
-            print(results)
-            self.print_gapfilling_stats(model_name, results)
+                    print(f"Running GapFiller for {model_name}")
+                    gf1 = GapFiller.from_folder(model_folder, objective_function_id='Biomass_assembly_C3_in',
+                                                temporary_universal_model=True)  # mudar aqui para ser mais rapido
 
-    def print_gapfilling_stats(self, model_name, results):
-        print(f"--- Gap-filling statistics for {model_name} ---")
+                    start_time = time.time()
+                    results = gf1.run(enumeration=True, json_output=True)
+                    self.results[model_name] = results
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
+
+                    print(f"Time taken for {model_name}: {elapsed_time}")
+                    print(f"Results for {model_name}:")
+                    print(results)
+                    self.print_gapfilling_stats(model_name, results)
+                else:
+                    print(f"{model_name} is not a directory. Skipping...")
+
+            except Exception as e:
+                print(f"Error for {model_name}: {type(e).__name__}: {str(e)}")
+
+                continue
+
+        # Save results to a file after all models have been processed
+        self.save_results_to_file()
+
+    def print_gapfilling_stats(self, model_name, results, file=None):
+        # print_or_write("Reactions removed dictionary keys: " + ", ".join(self.reactions_removed.keys()), file)
+
+        # if model_name not in self.reactions_removed:
+        #     print_or_write(f"{model_name} not found in reactions_removed dictionary.", file)
+        #     return
+
+        # print_or_write(f"--- Gap-filling statistics for {model_name} ---", file)
         removed_reactions = self.reactions_removed[model_name]
         num_removed_reactions = len(removed_reactions)
         num_reconstructable = len(results["Reconstructable targets"])
@@ -64,11 +100,25 @@ class TestGapFiller(unittest.TestCase):
         reconstructable_reactions = set(removed_reactions) & set(results["Reconstructable targets"])
         num_reconstructable_removed = len(reconstructable_reactions)
 
-        print(f"Number of removed reactions: {num_removed_reactions}")
-        print(f"Number of reconstructable targets: {num_reconstructable}")
-        print(f"Number of removed reactions that are reconstructable: {num_reconstructable_removed}")
-        print(f"Reconstructable reactions that were removed: {reconstructable_reactions}")
-        print("----------------------------------------------------")
+        # print_or_write(f"Number of removed reactions: {num_removed_reactions}", file)
+        # print_or_write(f"Number of reconstructable targets: {num_reconstructable}", file)
+        # print_or_write(f"Number of removed reactions that are reconstructable: {num_reconstructable_removed}", file)
+        # print_or_write(f"Reconstructable reactions that were removed: {reconstructable_reactions}", file)
+        # print_or_write("----------------------------------------------------", file)
+
+    def save_results_to_file(self):
+        output_folder = 'meneco_outputs'
+        os.makedirs(output_folder, exist_ok=True)
+        output_file = os.path.join(output_folder, "all_models_results.txt")
+
+        with open(output_file, 'w') as f:
+            for model_name, results in self.results.items():
+                f.write(f"--- Meneco output for {model_name} ---\n")
+                f.write(f"Results for {model_name}:\n")
+                for key, value in results.items():
+                    f.write(f"{key}: {value}\n")
+
+                self.print_gapfilling_stats(model_name, results, file=f)
 
 
 if __name__ == '__main__':
