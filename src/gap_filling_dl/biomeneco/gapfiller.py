@@ -78,7 +78,7 @@ class GapFiller:
         return self.results_meneco
 
     @classmethod
-    def from_folder(cls, folder_path, temporary_universal_model=False, objective_function_id=None):
+    def from_folder(cls, folder_path, temporary_universal_model: bool = False, objective_function_id: str = None):
         """
         Create a GapFiller object from a folder.
 
@@ -97,13 +97,15 @@ class GapFiller:
         # print(os.listdir(folder_path))
         # print(os.listdir(folder_path))
         for file in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file)
+            print(f"Checking file: {file_path}")
             if file.endswith(".xml"):
-                if "model" in file and "universal" not in file:
+                if "model" in file and "universal" not in file and "seeds" not in file and "targets" not in file:
                     model_file = file
-                elif "seeds" in file:
+                if "seeds" in file:
                     seeds_file = file
-                elif "targets" in file:
-                    targets_file = file
+                if "targets" in file:
+                    targets_file = file  # Update this line
                 elif "universal_model" in file:
                     universal_model_file = file
 
@@ -149,7 +151,7 @@ class GapFiller:
             # read the targets as .XML file
             targets = read_sbml_model(gap_filler.targets_path)
             for target in targets.metabolites:
-                pathways_to_keep += [pathway for pathway in my_model.metabolite_pathway_map[target[0]]]
+                pathways_to_keep += [pathway for pathway in my_model.metabolite_pathway_map[target.id]]
             pathways_to_keep = list(set(pathways_to_keep))
             print('Pathways to keep are:', pathways_to_keep)
             universal_model = cobra.io.read_sbml_model(gap_filler.universal_model_path)
@@ -169,9 +171,9 @@ class GapFiller:
             write_sbml_model(universal_model, os.path.join(folder_path, 'temporary_universal_model.xml'))
 
             if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
-                print('Temporary universal model file successfully created.'
-                      'Now the temporary universal model is ready to be used.')
+                print('Temporary universal model file successfully created.')
                 gap_filler.universal_model_path = os.path.join(folder_path, 'temporary_universal_model.xml')
+                print('Temporary universal model file path:', gap_filler.universal_model_path)
             else:
                 raise FileNotFoundError("Temporary universal model file not found.")
 
