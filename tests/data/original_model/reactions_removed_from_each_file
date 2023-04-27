@@ -1,8 +1,8 @@
 Reactions removed from each model:
-Model 1: ['R00939_C3_in', 'R03191_C3_in', 'R03066_C3_in', 'R04230_C3_in']
-Model 2: ['R04440_C3_in', 'R04960_C3_in', 'R01466_C3_in', 'R04954_C3_in', 'R02016_C3_in']
-Model 3: ['R01231_C3_in', 'R01230_C3_in', 'R01528_C3_in', 'R02749_C3_in']
-Model 4: ['R01819_C3_in']
-Model 5: ['R00694_C3_in', 'R00566_C3_in', 'R00228_C3_in', 'R00619_C3_in']
-Model 6: ['R02739_C3_in', 'R03346_C3_in', 'R05070_C3_in', 'R01863_C3_in', 'R00802_C3_in']
+Model 1: ['R00161_C3_in', 'R02023_C3_in', 'R01021_C3_in']
+Model 2: ['R01416_C3_in']
+Model 3: ['R00200_C3_in', 'R00462_C3_in']
+Model 4: ['R00248_C3_in', 'R02689_C3_in']
+Model 5: ['R01978_C3_in']
+Model 6: ['R03236_C3_in', 'R00549_C3_in', 'R04364_C3_in', 'R01134_C3_in', 'R01665_C3_in', 'R03066_C3_in']
 
