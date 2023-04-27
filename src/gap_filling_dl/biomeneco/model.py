@@ -9,6 +9,7 @@ from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
 
+
 from gap_filling_dl.biomeneco.utils import get_metabolite_pathway_map, get_reaction_pathway_map
 from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
@@ -177,7 +178,6 @@ class Model(cobra.Model):
         # check if the reactions are in the inicial universal model
         universal_model_reactions_ids = set()  # Initialize as an empty set
         kegg_reactions = []
-
         universal_model_file = None  # Initialize the variable as None
 
         # If the user wants to generate files and a parent folder was provided
@@ -203,10 +203,11 @@ class Model(cobra.Model):
         # Generate random knockout models
         knockout_models = []
         knockout_numbers = []
+        removed_reactions_dict = {}
 
-        for i in range(num_models):
+        generated_models = 0
 
-            # randomly select the number of knockouts
+        while generated_models < num_models:
             num_knockouts = random.randint(min_knockouts, max_knockouts)
             if num_knockouts > len(kegg_reactions):
                 num_knockouts = len(kegg_reactions)
@@ -218,8 +219,18 @@ class Model(cobra.Model):
             new_model = deepcopy(self)  # create a copy of the model
             new_model.remove_reactions(removed_reactions)
             new_model.id = f"{self.id}_knockout_{num_knockouts}"  # set the model ID
+
+            # Check if seeds and targets are not empty
+            new_model_instance = Model(new_model, objective_function_id=self.objective_function_id)
+            new_model_instance.identify_seeds()
+            new_model_instance.identify_targets()
+            if not new_model_instance.seeds or not new_model_instance.targets:
+                continue  # Skip the current iteration and do not add the model to the list
+
             knockout_models.append(new_model)
             knockout_numbers.append(num_knockouts)
+            removed_reactions_dict[generated_models] = removed_reactions
+            generated_models += 1
 
         # if the user wants to generate files
         if generate_files and parent_folder:
@@ -233,6 +244,7 @@ class Model(cobra.Model):
                 # write the new model instance to an SBML file
                 new_model_instance = Model(model, objective_function_id=self.objective_function_id)
                 cobra.io.write_sbml_model(model, os.path.join(model_folder, f"{model.id}.xml"))
+
                 # if the file was successfully created print a message
                 if os.path.exists(os.path.join(model_folder, f"{model.id}.xml")):
                     print(f"SBML file {model.id}.xml created.")
@@ -255,4 +267,9 @@ class Model(cobra.Model):
                     if os.path.exists(dest_universal_model_file):
                         print(f"Universal model {universal_model_filename} copied to {model_folder}.")
 
+        print("Reactions removed from each model:")
+        for key, value in removed_reactions_dict.items():
+            print(f"Model {key + 1}: {value}")
+
         return knockout_numbers
+
