@@ -1,3 +1,6 @@
+from gap_filling_dl.my_classes import Model
+
+
 def get_metabolite_pathway_map(model):
     """
     Get a map of metabolite IDs to their associated pathways.
@@ -16,7 +19,7 @@ def get_metabolite_pathway_map(model):
     return metabolite_pathway_map
 
 
-def get_reaction_pathway_map(model):
+def get_reaction_pathway_map(model: Model) -> Model:
     """
     Get a map of reaction IDs to their associated pathways.
     Returns a dictionary where the keys are reaction IDs and the values are lists of pathways.
