@@ -1,0 +1,64 @@
+--- Meneco output for model_1 ---
+Results for model_1:
+Draft network file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_1/model_spneumoniaeR6_knockout_3.xml
+Seeds file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_1/model_spneumoniaeR6_knockout_3_seeds.xml
+Targets file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_1/model_spneumoniaeR6_knockout_3_targets.xml
+Unproducible targets: ['M_C00016_in', 'M_C00116_in', 'M_C00588_in', 'M_C06707_in']
+Repair db file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_1/temporary_universal_model.xml
+Unreconstructable targets: ['M_C00016_in', 'M_C00116_in', 'M_C00588_in', 'M_C06707_in']
+Reconstructable targets: []
+--- Meneco output for model_2 ---
+Results for model_2:
+Draft network file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_2/model_spneumoniaeR6_knockout_1.xml
+Seeds file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_2/model_spneumoniaeR6_knockout_1_seeds.xml
+Targets file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_2/model_spneumoniaeR6_knockout_1_targets.xml
+Unproducible targets: ['M_C00116_in', 'M_C00134_in', 'M_C00315_in', 'M_C00750_in']
+Repair db file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_2/temporary_universal_model.xml
+Unreconstructable targets: ['M_C00116_in', 'M_C00315_in', 'M_C00750_in']
+Reconstructable targets: ['M_C00134_in']
+Essential reactions: {'M_C00134_in': []}
+One minimal completion: ['R_R01157_in']
+Intersection of cardinality minimal completions: []
+Union of cardinality minimal completions: ['R_R01157_in', 'R_R01416_in']
+All cardinality minimal completions: [['R_R01157_in'], ['R_R01416_in']]
+--- Meneco output for model_3 ---
+Results for model_3:
+Draft network file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_3/model_spneumoniaeR6_knockout_2.xml
+Seeds file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_3/model_spneumoniaeR6_knockout_2_seeds.xml
+Targets file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_3/model_spneumoniaeR6_knockout_2_targets.xml
+Unproducible targets: ['M_C00116_in', 'M_C01672_in']
+Repair db file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_3/temporary_universal_model.xml
+Unreconstructable targets: ['M_C00116_in', 'M_C01672_in']
+Reconstructable targets: []
+--- Meneco output for model_4 ---
+Results for model_4:
+Draft network file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_4/model_spneumoniaeR6_knockout_2.xml
+Seeds file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_4/model_spneumoniaeR6_knockout_2_seeds.xml
+Targets file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_4/model_spneumoniaeR6_knockout_2_targets.xml
+Unproducible targets: ['M_C00116_in', 'M_C04046_in', 'M_C06040_in']
+Repair db file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_4/temporary_universal_model.xml
+Unreconstructable targets: ['M_C00116_in', 'M_C04046_in', 'M_C06040_in']
+Reconstructable targets: []
+--- Meneco output for model_5 ---
+Results for model_5:
+Draft network file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_5/model_spneumoniaeR6_knockout_1.xml
+Seeds file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_5/model_spneumoniaeR6_knockout_1_seeds.xml
+Targets file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_5/model_spneumoniaeR6_knockout_1_targets.xml
+Unproducible targets: ['M_C00116_in', 'M_C11826_in']
+Repair db file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_5/temporary_universal_model.xml
+Unreconstructable targets: ['M_C00116_in', 'M_C11826_in']
+Reconstructable targets: []
+--- Meneco output for model_6 ---
+Results for model_6:
+Draft network file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_6/model_spneumoniaeR6_knockout_6.xml
+Seeds file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_6/model_spneumoniaeR6_knockout_6_seeds.xml
+Targets file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_6/model_spneumoniaeR6_knockout_6_targets.xml
+Unproducible targets: ['M_C00016_in', 'M_C00061_in', 'M_C00116_in']
+Repair db file: /Users/josediogomoura/gap_filling_dl/tests/data/original_model/model_6/temporary_universal_model.xml
+Unreconstructable targets: ['M_C00016_in', 'M_C00116_in']
+Reconstructable targets: ['M_C00061_in']
+Essential reactions: {'M_C00061_in': ['R_R00548_in']}
+One minimal completion: ['R_R00548_in']
+Intersection of cardinality minimal completions: ['R_R00548_in']
+Union of cardinality minimal completions: ['R_R00548_in']
+All cardinality minimal completions: [['R_R00548_in']]

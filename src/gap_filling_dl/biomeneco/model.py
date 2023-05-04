@@ -1,16 +1,21 @@
 import os
+import random
+import shutil
+import tempfile
+from copy import deepcopy
 from typing import Tuple, List, Iterable
 import cobra
 from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
 
+
 from gap_filling_dl.biomeneco.utils import get_metabolite_pathway_map, get_reaction_pathway_map
 from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
 
 class Model(cobra.Model):
-    def __init__(self, model: cobra.Model, objective_function_id, *args, **kwargs):
+    def __init__(self, model: cobra.Model = None, objective_function_id=None, *args, **kwargs):
         self.reaction_pathway_map = get_reaction_pathway_map(model)
         self.metabolite_pathway_map = get_metabolite_pathway_map(model)
         self.objective_function_id = objective_function_id
@@ -131,18 +136,16 @@ class Model(cobra.Model):
 
     def to_sbml(self, file_name: str, save_path: str, seeds=True, targets=True):
         """
-        Write a model to an SBML file.
+        Save the model to SBML.
 
-        Parameters
-        ----------
-        file_name: str
-            The name of the SBML file to write to.
-        save_path: str
-            The path to save the SBML file to.
-        seeds: Boolean
-            A list of tuples of seed metabolite IDs and compartments.
-        targets: Boolean
-            A list of tuples of target metabolite IDs and compartments.
+        Args:
+            file_name: The name of the SBML file.
+            save_path: The path to the folder where the SBML file will be saved.
+            seeds: Whether to save the seeds of the model.
+            targets: Whether to save the targets of the model.
+
+        Returns:
+            None
         """
         if not os.path.exists(save_path):
             os.makedirs(save_path)
@@ -152,3 +155,121 @@ class Model(cobra.Model):
         if targets:  # if the user wants to save the targets
             targets_file_name = os.path.splitext(file_name)[0] + "_targets.xml"
             write_metabolites_to_sbml(targets_file_name, save_path, self.targets)
+
+    def create_random_knockout_models(self, num_models: int, min_knockouts: int, max_knockouts: int,
+                                      generate_files: bool = False, parent_folder: str = None,
+                                      seeds_targets: bool = False, universal_model=None):
+        """Create random knockout models.
+
+        Args:
+            num_models: The number of knockout models to create.
+            min_knockouts: The minimum number of knockouts to create.
+            max_knockouts: The maximum number of knockouts to create.
+            generate_files: Whether to generate SBML files for the knockout models.
+            parent_folder: The parent folder to save the SBML files to.
+            seeds_targets: Whether to include the seeds and targets in the SBML files.
+            universal_model: The path to the universal model.
+
+        Returns:
+            A list of random knockout models.
+
+        """
+
+        # check if the reactions are in the inicial universal model
+        universal_model_reactions_ids = set()  # Initialize as an empty set
+        kegg_reactions = []
+        universal_model_file = None  # Initialize the variable as None
+
+        # If the user wants to generate files and a parent folder was provided
+        if universal_model and parent_folder:
+            universal_model = cobra.io.read_sbml_model(universal_model)
+            universal_model_reactions_ids = set([reaction.id.split('_')[0] for reaction in universal_model.reactions])
+
+            universal_model_file = os.path.join(parent_folder, 'universal_model.xml')
+            cobra.io.write_sbml_model(universal_model, universal_model_file)
+
+        # If the user wants to generate files but no parent folder was provided
+        elif universal_model:
+            universal_model = cobra.io.read_sbml_model(universal_model)
+            universal_model_reactions_ids = set([reaction.id.split('_')[0] for reaction in universal_model.reactions])
+
+        # It checks if the reaction ID (without the compartment part) is a subset of the universal_model_reactions_ids
+        if universal_model:
+            for reaction in self.reactions:
+                if {reaction.id.split('_')[0]}.issubset(
+                        universal_model_reactions_ids):  # faster when using set instead of list
+                    kegg_reactions.append(reaction.id)
+
+        # Generate random knockout models
+        knockout_models = []
+        knockout_numbers = []
+        removed_reactions_dict = {}
+
+        generated_models = 0
+
+        while generated_models < num_models:
+            num_knockouts = random.randint(min_knockouts, max_knockouts)
+            if num_knockouts > len(kegg_reactions):
+                num_knockouts = len(kegg_reactions)
+                if num_knockouts == 0:
+                    raise ValueError(
+                        "The number of KEGG reactions is 0. Please check if the KEGG reactions are properly populated.")
+
+            removed_reactions = random.sample(kegg_reactions, num_knockouts)
+            new_model = deepcopy(self)  # create a copy of the model
+            new_model.remove_reactions(removed_reactions)
+            new_model.id = f"{self.id}_knockout_{num_knockouts}"  # set the model ID
+
+            # Check if seeds and targets are not empty
+            new_model_instance = Model(new_model, objective_function_id=self.objective_function_id)
+            new_model_instance.identify_seeds()
+            new_model_instance.identify_targets()
+            if not new_model_instance.seeds or not new_model_instance.targets:
+                continue  # Skip the current iteration and do not add the model to the list
+
+            knockout_models.append(new_model)
+            knockout_numbers.append(num_knockouts)
+            removed_reactions_dict[generated_models] = removed_reactions
+            generated_models += 1
+
+        # if the user wants to generate files
+        if generate_files and parent_folder:
+            for idx, model in enumerate(knockout_models):
+                model_folder = os.path.join(parent_folder, f"model_{idx + 1}")
+                os.makedirs(model_folder, exist_ok=True)  # exist_ok=True to avoid errors if the folder already exists
+                # if the folder was successfully created print a message
+                if os.path.exists(model_folder):
+                    print(f"Folder {model_folder} created.")
+
+                # write the new model instance to an SBML file
+                new_model_instance = Model(model, objective_function_id=self.objective_function_id)
+                cobra.io.write_sbml_model(model, os.path.join(model_folder, f"{model.id}.xml"))
+
+                # if the file was successfully created print a message
+                if os.path.exists(os.path.join(model_folder, f"{model.id}.xml")):
+                    print(f"SBML file {model.id}.xml created.")
+
+                    # create seeds and targets files
+                if seeds_targets:
+                    new_model_instance.identify_seeds()
+                    new_model_instance.identify_targets()
+                    new_model_instance.to_sbml(f"{model.id}.xml", save_path=model_folder, seeds=True, targets=True)
+                    # if the files were successfully created print a message
+                    if os.path.exists(os.path.join(model_folder, f"{model.id}_seeds.xml")):
+                        print(f"Seeds file {model.id}_seeds.xml created.")
+                    if os.path.exists(os.path.join(model_folder, f"{model.id}_targets.xml")):
+                        print(f"Targets file {model.id}_targets.xml created.")
+
+                if universal_model:
+                    universal_model_filename = os.path.basename(universal_model_file)
+                    dest_universal_model_file = os.path.join(model_folder, universal_model_filename)
+                    shutil.copy2(universal_model_file, dest_universal_model_file)
+                    if os.path.exists(dest_universal_model_file):
+                        print(f"Universal model {universal_model_filename} copied to {model_folder}.")
+
+        print("Reactions removed from each model:")
+        for key, value in removed_reactions_dict.items():
+            print(f"Model {key + 1}: {value}")
+
+        return knockout_numbers
+
