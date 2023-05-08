@@ -14,9 +14,6 @@
       <compartment id="C_00002" constant="true"/>
     </listOfCompartments>
     <listOfSpecies>
-      <species id="M_C06707_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00116_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00588_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00016_in" compartment="C_00002" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>

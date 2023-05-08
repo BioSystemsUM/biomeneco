@@ -3,7 +3,7 @@ import os
 from cobra.flux_analysis import gapfill
 from cobra.io import read_sbml_model, write_sbml_model
 
-from kegg_api import get_related_pathways
+from gap_filling_dl.kegg_api import get_related_pathways
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

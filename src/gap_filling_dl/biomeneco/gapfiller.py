@@ -2,8 +2,7 @@ import os
 import time
 import cobra
 from meneco import run_meneco
-from cobra.io import read_sbml_model, write_sbml_model
-from src.gap_filling_dl.biomeneco.model import Model
+from gap_filling_dl.utils import build_temporary_universal_model
 
 
 class GapFiller:
@@ -132,43 +131,12 @@ class GapFiller:
         gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
 
-        # create a temporary universal model if necessary
-
         if temporary_universal_model:
             if not objective_function_id:
                 raise ValueError("Objective function ID must be specified for the creation of a temporary universal "
                                  "model.")
 
-            pathways_to_ignore = []
-            pathways_to_keep = []
-
-            # create a Model object
-            read_model = read_sbml_model(gap_filler.model_path)
-            my_model = Model(model=read_model, objective_function_id=objective_function_id)
-
-            # get the pathways to ignore
-
-            # read the targets as .XML file
-            targets = read_sbml_model(gap_filler.targets_path)
-            for target in targets.metabolites:
-                pathways_to_keep += [pathway for pathway in my_model.metabolite_pathway_map[target.id]]
-            pathways_to_keep = list(set(pathways_to_keep))
-            print('Pathways to keep are:', pathways_to_keep)
-            universal_model = cobra.io.read_sbml_model(gap_filler.universal_model_path)
-            print('Number of reactions in universal model:', len(universal_model.reactions))
-            to_keep = set()
-
-            # remove the reactions that are not in the pathways to keep
-            for pathway in universal_model.groups:
-                if pathway.name in pathways_to_keep:
-                    to_keep.update(reaction for reaction in pathway.members)
-            to_remove = set(universal_model.reactions) - to_keep
-            universal_model.remove_reactions(list(to_remove), remove_orphans=True)
-            print('Number of reactions in temporary universal model:', len(universal_model.reactions))
-
-            # create a new model or overwrite the old one?
-            # here we are creating a new file called temporary_universal_model.xml
-            write_sbml_model(universal_model, os.path.join(folder_path, 'temporary_universal_model.xml'))
+            build_temporary_universal_model(gap_filler, folder_path)
 
             if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
                 print('Temporary universal model file successfully created.')

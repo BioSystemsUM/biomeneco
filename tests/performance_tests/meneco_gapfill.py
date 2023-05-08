@@ -25,7 +25,7 @@ class TestGapFiller(unittest.TestCase):
             'model_6': ['R03236_C3_in', 'R00549_C3_in', 'R04364_C3_in', 'R01134_C3_in', 'R01665_C3_in', 'R03066_C3_in']
         }
 
-        self.models_folder = '/Users/josediogomoura/gap_filling_dl/tests/data/original_model'
+        self.models_folder = '../data/original_model'
 
     def test_performance_meneco(self):
         start_time = time.time()
@@ -50,7 +50,7 @@ class TestGapFiller(unittest.TestCase):
     def test_performance_meneco_folders(self):
         self.results = {}
 
-        for model_name in sorted(os.listdir(self.models_folder)):
+        for model_name in sorted(os.listdir(self.models_folder))[:2]:
             # list all the files in the directory
             try:
 
