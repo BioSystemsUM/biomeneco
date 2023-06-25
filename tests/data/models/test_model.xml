@@ -1,0 +1,59 @@
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2" fbc:required="true" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2">
+  <model id="test_model">
+    <listOfCompartments>
+      <compartment id="C_00001" name="outside"/>
+      <compartment id="C_00002" name="inside"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="met1" compartment="C_00001" boundaryCondition="false" hasOnlySubstanceUnits="false" constant="false"/>
+      <species id="met2" compartment="C_00001" boundaryCondition="false" hasOnlySubstanceUnits="false" constant="false"/>
+      <species id="met3" compartment="C_00002" boundaryCondition="false" hasOnlySubstanceUnits="false" constant="false"/>
+      <species id="met4" compartment="C_00002" boundaryCondition="false" hasOnlySubstanceUnits="false" constant="false"/>
+    </listOfSpecies>
+    <listOfReactions>
+      <reaction id="rxn1" name="Reaction 1" reversible="true">
+  <listOfReactants>
+    <speciesReference species="met1" stoichiometry="1"/>
+  </listOfReactants>
+  <listOfProducts>
+    <speciesReference species="met2" stoichiometry="1"/>
+  </listOfProducts>
+  <kineticLaw>
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <apply>
+        <eq/>
+        <ci> FLUX_VALUE </ci>
+        <apply>
+          <times/>
+          <ci> FLUX_VARIABLE </ci>
+          <ci> ENZYME_VARIABLE </ci>
+        </apply>
+      </apply>
+    </math>
+    <listOfParameters>
+      <parameter id="FLUX_VARIABLE" name="Reaction Flux" value="0" units="mmol_per_gDW_per_hr"/>
+      <parameter id="ENZYME_VARIABLE" name="Enzyme Activity" value="1" units="mmol_per_gDW_per_hr"/>
+    </listOfParameters>
+  </kineticLaw>
+  <fbc:lowerFluxBound>-1000.0</fbc:lowerFluxBound>
+  <fbc:upperFluxBound>1000.0</fbc:upperFluxBound>
+</reaction>
+      <fbc:objective fbc:id="obj1" value="1">
+  <fbc:listOfFluxObjectives>
+    <fbc:fluxObjective fbc:reaction="Biomass" fbc:coefficient="1"/>
+  </fbc:listOfFluxObjectives>
+</fbc:objective>
+    </listOfReactions>
+    <fbc:listOfObjectives>
+      <fbc:objective fbc:id="obj1" type="maximize">
+  <fbc:listOfFluxObjectives>
+    <fbc:fluxObjective fbc:reaction="rxn1" fbc:coefficient="1"/>
+  </fbc:listOfFluxObjectives>
+</fbc:objective>
+    </fbc:listOfObjectives>
+    </model>
+</sbml>
+
+
+
+
