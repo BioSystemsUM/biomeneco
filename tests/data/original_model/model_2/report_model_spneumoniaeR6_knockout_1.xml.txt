@@ -1,0 +1,62 @@
+Gap-filling report for model_spneumoniaeR6_knockout_1.xml
+Seeds file: model_spneumoniaeR6_knockout_1_seeds.xml
+Targets file: model_spneumoniaeR6_knockout_1_targets.xml
+Universal model file: universal_model.xml
+Execution Time: 67605.09 seconds
+--- Comparison of Reactions ---
+Added reactions from the gap-filling:
+
+
+Reaction: R00183_in
+Flux: -8.74670792511163e-32
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00208_in
+Flux: -6.500000000000001
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01157_in
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R11671_in
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R04780_in
+Flux: 1.5926940960586387e-30
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+Fluxes: EX_C00001_out_b    0.000000e+00
+EX_C00262_out_b    0.000000e+00
+EX_C00124_out_b    0.000000e+00
+EX_C00140_out_b    0.000000e+00
+EX_C00106_out_b    0.000000e+00
+                       ...     
+R00183_in         -8.746708e-32
+R00208_in         -6.500000e+00
+R01157_in          0.000000e+00
+R11671_in          0.000000e+00
+R04780_in          1.592694e-30
+Name: fluxes, Length: 600, dtype: float64
+Previously removed reactions:
+R01416_in
+
+Reaction: R01416_in
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
