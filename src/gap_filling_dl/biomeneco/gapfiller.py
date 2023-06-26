@@ -1,17 +1,23 @@
 import os
 import time
 import cobra
+from cobra.flux_analysis import flux_variability_analysis
 from meneco.query import get_minimal_completion_size
 from meneco.meneco import run_meneco
 from meneco.meneco import sbml
 import copy
 
 from gap_filling_dl.utils import build_temporary_universal_model
+from gap_filling_dl.biomeneco.utils import get_compartments_in_model
+from gap_filling_dl.biomeneco.utils import identify_dead_end_metabolites
 
 
 class GapFiller:
     def __init__(self, model_path, universal_model_path):
 
+        self.dead_ends = None
+        self.cloned_model = None
+        self.temporary_universal_model = None
         self.original_model = None
         self._universal_model = None
         self.minimal_set = None
@@ -63,6 +69,16 @@ class GapFiller:
     def universal_model(self, value):
         self._universal_model = value
 
+    @property
+    def original_model(self):
+        if self._original_model is None:
+            self._original_model = cobra.io.read_sbml_model(self.model_path)
+        return self._original_model
+
+    @original_model.setter
+    def original_model(self, value):
+        self._original_model = value
+
     def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None,
             objective_function_id=None, **kwargs):
         """
@@ -90,7 +106,7 @@ class GapFiller:
 
             draftnet = sbml.readSBMLnetwork(self.model_path, 'draft')
             repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repair')
-            seeds = seeds = sbml.readSBMLseeds(self.seeds_path)
+            seeds = sbml.readSBMLseeds(self.seeds_path)
             targets = sbml.readSBMLtargets(self.targets_path)
 
             # Call the get_minimal_completion_size function this order: draftnet, repairnet, seeds, targets)
@@ -105,7 +121,7 @@ class GapFiller:
             print("Time taken: ", self.gftime)
 
         return self.report(write_to_file=write_to_file, removed_reactions=removed_reactions,
-                           objective_function_id=objective_function_id)
+                           objective_function_id=objective_function_id, **kwargs)
 
     def run_meneco(self, enumeration: bool, json_output: bool) -> dict:
         """
@@ -188,17 +204,20 @@ class GapFiller:
         gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
 
-        if temporary_universal_model:
+        if temporary_universal_model and gap_filler.temporary_universal_model is None:
             if not objective_function_id:
                 raise ValueError(
                     "Objective function ID must be specified for the creation of a temporary universal model.")
 
-            build_temporary_universal_model(gap_filler, folder_path)
+            build_temporary_universal_model(gap_filler, folder_path, **kwargs)
 
             if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
                 print('Temporary universal model file successfully created.')
                 gap_filler.universal_model_path = os.path.join(folder_path, 'temporary_universal_model.xml')
                 print('Temporary universal model file path:', gap_filler.universal_model_path)
+
+                gap_filler.temporary_universal_model = cobra.io.read_sbml_model(
+                    os.path.join(folder_path, 'temporary_universal_model.xml'))
             else:
                 raise FileNotFoundError("Temporary universal model file not found.")
 
@@ -242,7 +261,7 @@ class GapFiller:
 
         return model
 
-    def report(self, write_to_file=False, removed_reactions: list = None, objective_function_id: str = None, ):
+    def report(self, write_to_file=False, removed_reactions: list = None, objective_function_id: str = None, **kwargs):
 
         if self.filled_model is None:
             self.filled_model = copy.deepcopy(self.original_model)
@@ -259,7 +278,6 @@ class GapFiller:
         if self.minimal_completion is not None:
             report += 'This report is based on the minimal completion of the draft network, which is faster. ' \
                       '(This is not the optimized solution.)\n'
-
 
             # define the objective function of the model
             if objective_function_id is not None:
@@ -314,7 +332,6 @@ class GapFiller:
         #     if objective_function_id is not None:
         #         self.filled_model.objective = objective_function_id
 
-
         #     for model_name, results in self.results_meneco.items():
         #         report += "--- {} ---\n".format(model_name)
         #         report += "Results for {}:\n".format(model_name)
@@ -355,7 +372,7 @@ class GapFiller:
                 # add reactions to the model
                 self.filled_model.add_reactions([self.universal_model.reactions.get_by_id(reaction)])
 
-                #universal_model.reactions.get_by_id('
+                # universal_model.reactions.get_by_id('
 
                 report += f"{self.filled_model.reactions.get_by_id(reaction)}\n"
                 report += f"Flux: {self.filled_model.reactions.get_by_id(reaction).flux}\n"
@@ -399,3 +416,82 @@ class GapFiller:
         #         self.filled_model.add_reactions([self.universal_model.reactions.get_by_id(reaction)])
         #         print(f"\n\nReaction: {reaction} has been added to the model.")
         # return self.filled_model
+
+    def clone_reactions(self, with_temporary_universal_model: bool = False, **kwargs) -> cobra.Model:
+
+        # Get the compartments in the model
+        compartments = get_compartments_in_model(self.original_model)
+
+        # Prepare a new list to store all new reactions
+        new_reactions = []
+
+        # Start cloning
+        if with_temporary_universal_model:
+            # check if the temporary universal model exists
+            if self.temporary_universal_model is None:
+                build_temporary_universal_model(self.original_model, **kwargs)
+            model_to_use = self.temporary_universal_model
+        else:
+            model_to_use = self.universal_model
+
+        for reaction in model_to_use.reactions:
+            for compartment in compartments:
+                # Clone reaction
+                cloned_reaction = copy.deepcopy(reaction)
+                # Change id and compartment of metabolites
+                for metabolite in cloned_reaction.metabolites:
+                    metabolite.id = metabolite.id + '_' + compartment
+                    metabolite.compartment = compartment
+                # Change id of reaction
+                cloned_reaction.id = cloned_reaction.id + '_' + compartment
+                # Add to list
+                new_reactions.append(cloned_reaction)
+
+        # Create a copy of the original model
+        model_copy = copy.deepcopy(self.original_model)
+        # Add all new reactions to the copied model
+        model_copy.add_reactions(new_reactions)
+
+        # get the transport reactions
+        cloned_transport_reactions = self.get_transport_reactions()
+
+        # add the transport reactions to the model
+        model_copy.add_reactions(cloned_transport_reactions)
+
+        self.cloned_model = model_copy
+
+        return model_copy
+
+    def get_transport_reactions(self) -> list:
+        """
+        Get all the transport reactions in the model
+        """
+
+        # get all the transport reactions in the model
+        transport_reactions = [r for r in self.original_model.reactions if len(r.compartments) > 1]
+
+        # clone the transport reactions
+        cloned_transport_reactions = [copy.deepcopy(rxn) for rxn in transport_reactions]
+
+        return cloned_transport_reactions
+
+    def identify_dead_end_metabolites(self, model: cobra.Model = None) -> list:
+        """
+        Identify dead-end metabolites in the model
+        """
+
+        # if no model is provided, use the original model and save the result to self.dead_ends
+        if model is None:
+            model = self.original_model
+            self.dead_ends = identify_dead_end_metabolites(model)
+            return self.dead_ends
+        else:
+            # If a model is provided, just return the result without saving it to self.dead_ends
+            return identify_dead_end_metabolites(model)
+
+
+
+
+
+
+
