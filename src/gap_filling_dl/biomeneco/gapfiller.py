@@ -136,7 +136,7 @@ class GapFiller:
                 raise ValueError("Objective function ID must be specified for the creation of a temporary universal "
                                  "model.")
 
-            build_temporary_universal_model(gap_filler, folder_path)
+            build_temporary_universal_model(gap_filler, folder_path, related_pathways=True)
 
             if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
                 print('Temporary universal model file successfully created.')

@@ -50,7 +50,7 @@ class TestGapFiller(unittest.TestCase):
     def test_performance_meneco_folders(self):
         self.results = {}
 
-        for model_name in sorted(os.listdir(self.models_folder))[:2]:
+        for model_name in sorted(os.listdir(self.models_folder)):
             # list all the files in the directory
             try:
 

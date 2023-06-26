@@ -31,8 +31,8 @@ def build_temporary_universal_model(gap_filler, folder_path, related_pathways):
     pathways_to_keep = set(pathways_to_keep) - pathways_to_ignore
     if related_pathways:
         related_pathways = set()
-        if os.path.isfile(os.path.join(folder_path, '/../related_pathways_map.json')):
-            with open(os.path.join(folder_path, '/../related_pathways_map.json'), 'r') as related_pathways_map_file:
+        if os.path.exists(os.path.join(folder_path, '../related_pathways_map.json')):
+            with open(os.path.join(folder_path, '../related_pathways_map.json'), 'r') as related_pathways_map_file:
                 related_pathways_map = json.load(related_pathways_map_file)
         else:
             related_pathways_map = create_related_pathways_map(universal_model, folder_path)
