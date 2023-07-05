@@ -1,6 +1,11 @@
+import multiprocessing
 import os
 import time
+from typing import List
+
 import cobra
+from bioiso import BioISO, set_solver
+
 from cobra.flux_analysis import flux_variability_analysis
 from meneco.query import get_minimal_completion_size
 from meneco.meneco import run_meneco
@@ -10,6 +15,8 @@ import copy
 from gap_filling_dl.utils import build_temporary_universal_model
 from gap_filling_dl.biomeneco.utils import get_compartments_in_model
 from gap_filling_dl.biomeneco.utils import identify_dead_end_metabolites
+
+from multiprocessing import Pool
 
 
 class GapFiller:
@@ -30,6 +37,7 @@ class GapFiller:
         self._seeds_path = None
         self._targets_path = None
         self.filled_model = None
+        self.objective_function_id = None
 
     @property
     def seeds_path(self):
@@ -418,37 +426,45 @@ class GapFiller:
         # return self.filled_model
 
     def clone_reactions(self, with_temporary_universal_model: bool = False, **kwargs) -> cobra.Model:
-
         # Get the compartments in the model
         compartments = get_compartments_in_model(self.original_model)
 
-        # Prepare a new list to store all new reactions
-        new_reactions = []
-
-        # Start cloning
         if with_temporary_universal_model:
             # check if the temporary universal model exists
             if self.temporary_universal_model is None:
-                build_temporary_universal_model(self.original_model, **kwargs)
+                temporary_universal_model_path = os.path.join(kwargs['folder_path'], 'temporary_universal_model.xml')
+                if os.path.isfile(temporary_universal_model_path):
+                    self.temporary_universal_model = cobra.io.read_sbml_model(temporary_universal_model_path)
+                else:
+                    raise ValueError("Temporary universal model file does not exist.")
+            else:
+                print("Using existing temporary universal model.")
+
             model_to_use = self.temporary_universal_model
         else:
             model_to_use = self.universal_model
 
-        for reaction in model_to_use.reactions:
-            for compartment in compartments:
-                # Clone reaction
-                cloned_reaction = copy.deepcopy(reaction)
-                # Change id and compartment of metabolites
-                for metabolite in cloned_reaction.metabolites:
-                    metabolite.id = metabolite.id + '_' + compartment
-                    metabolite.compartment = compartment
-                # Change id of reaction
-                cloned_reaction.id = cloned_reaction.id + '_' + compartment
-                # Add to list
-                new_reactions.append(cloned_reaction)
+        new_reactions = []
+
+        # Create a pool of worker processes
+        pool = multiprocessing.Pool()
+
+        # Use pool.starmap to parallelize the cloning process
+        results = [
+            pool.starmap(self.clone_reaction, [(reaction, compartment) for compartment in compartments])
+            for reaction in model_to_use.reactions
+        ]
+
+        # Collect the cloned reactions from the results
+        for result in results:
+            new_reactions.extend(result)
+
+        # Close the pool of worker processes
+        pool.close()
+        pool.join()
 
         # Create a copy of the original model
-        model_copy = copy.deepcopy(self.original_model)
+        model_copy = self.original_model.copy()
         # Add all new reactions to the copied model
         model_copy.add_reactions(new_reactions)
 
@@ -461,6 +477,72 @@ class GapFiller:
         self.cloned_model = model_copy
 
         return model_copy
+
+    def clone_reaction(self, reaction, compartment):
+        cloned_reaction = cobra.Reaction(id=reaction.id + '_' + compartment)
+        cloned_reaction.add_metabolites({
+            self.clone_metabolite(metabolite, compartment): coeff
+            for metabolite, coeff in reaction.metabolites.items()
+        })
+        return cloned_reaction
+
+    def clone_metabolite(self, metabolite, compartment):
+        cloned_metabolite = metabolite.copy()
+        cloned_metabolite.id = metabolite.id + '_' + compartment
+        cloned_metabolite.compartment = compartment
+        return cloned_metabolite
+
+    # def clone_reactions(self, with_temporary_universal_model: bool = False, **kwargs) -> cobra.Model:
+    #     # Get the compartments in the model
+    #     compartments = get_compartments_in_model(self.original_model)
+    #
+    #     # Prepare a new list to store all new reactions
+    #     new_reactions = []
+    #
+    #     if with_temporary_universal_model:
+    #         # check if the temporary universal model exists
+    #         if self.temporary_universal_model is None:
+    #
+    #             temporary_universal_model_path = os.path.join(kwargs['folder_path'], 'temporary_universal_model.xml')
+    #             if os.path.isfile(temporary_universal_model_path):
+    #                 self.temporary_universal_model = cobra.io.read_sbml_model(temporary_universal_model_path)
+    #
+    #             else:
+    #                 raise ValueError("Temporary universal model file does not exist.")
+    #         else:
+    #             print("Using existing temporary universal model.")
+    #
+    #         model_to_use = self.temporary_universal_model
+    #     else:
+    #         model_to_use = self.universal_model
+    #
+    #     for reaction in model_to_use.reactions:
+    #         for compartment in compartments:
+    #             # Clone reaction
+    #             cloned_reaction = copy.deepcopy(reaction)
+    #             # Change id and compartment of metabolites
+    #             for metabolite in cloned_reaction.metabolites:
+    #                 metabolite.id = metabolite.id + '_' + compartment
+    #                 metabolite.compartment = compartment
+    #             # Change id of reaction
+    #             cloned_reaction.id = cloned_reaction.id + '_' + compartment
+    #             # Add to list
+    #             new_reactions.append(cloned_reaction)
+    #
+    #     # Create a copy of the original model
+    #     model_copy = copy.deepcopy(self.original_model)
+    #     # Add all new reactions to the copied model
+    #     model_copy.add_reactions(new_reactions)
+    #
+    #     # get the transport reactions
+    #     cloned_transport_reactions = self.get_transport_reactions()
+    #
+    #     # add the transport reactions to the model
+    #     model_copy.add_reactions(cloned_transport_reactions)
+    #
+    #     self.cloned_model = model_copy
+    #
+    #     return model_copy
 
     def get_transport_reactions(self) -> list:
         """
@@ -475,7 +557,7 @@ class GapFiller:
 
         return cloned_transport_reactions
 
-    def identify_dead_end_metabolites(self, model: cobra.Model = None) -> list:
+    def get_dead_end_metabolites(self, model: cobra.Model = None) -> list:
         """
         Identify dead-end metabolites in the model
         """
@@ -489,9 +571,139 @@ class GapFiller:
             # If a model is provided, just return the result without saving it to self.dead_ends
             return identify_dead_end_metabolites(model)
 
+    def identify_dead_end_metabolites_with_bioiso(self, objective_function_id, objective: str = 'maximize',
+                                                  solver: str = 'cplex') -> List[str]:
+        """
+        Identify dead-end metabolites in a model using BioISO.
 
+        Args:
+            objective: The type of objective function. Either 'maximize' or 'minimize'.
+            solver: The solver to use. Either 'cplex' or 'glpk'.
 
+        Returns:
+            A list of dead-end metabolites.
 
+        Parameters
+        ----------
+        objective_function_id
+        """
 
+        self.objective_function_id = objective_function_id
 
+        if not isinstance(self.objective_function_id, str) or not self.objective_function_id:
+            objective_function = self.objective_function_id
+            if not isinstance(objective_function, str) or not objective_function:
+                raise ValueError("The objective function must be a string.")
 
+        if not isinstance(objective, str) or not objective:
+            raise ValueError("The objective must be a string.")
+
+        if not isinstance(solver, str) or not solver:
+            raise ValueError("The solver must be a string.")
+
+        # Set the solver
+        set_solver(self, solver)
+
+        # Run BioISO
+        bio = BioISO(self.objective_function_id, self, objective)
+        bio.run(2, False)
+
+        # Get the results
+        results = bio.get_tree()
+        biomass_components = results["M_root_M_root_M_root_product"]["next"]
+
+        dead_ends = []
+
+        for biomass_component in biomass_components:
+            biomass_component_role = biomass_components[biomass_component].get("role")
+            biomass_component_analysis = biomass_components[biomass_component].get("analysis")
+            if biomass_component_role == "Reactant" and not biomass_component_analysis:
+                dead_ends.append(biomass_components[biomass_component].get("identifier"))
+
+        return dead_ends
+
+    def fill_dead_ends(self):
+        """
+        Fill the dead-end metabolites in the model using transport reactions.
+        """
+        if self.dead_ends is None:
+            raise ValueError(
+                "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
+        if self.cloned_model is None:
+            raise ValueError("The model has not been cloned. Please run the cloning step first.")
+
+        # Filter dead-end metabolites that are already present in the model
+        filtered_dead_ends = [metabolite for metabolite in self.dead_ends if
+                              metabolite not in self.cloned_model.metabolites]
+
+        transport_reactions = []
+        for metabolite_id in filtered_dead_ends:
+            transport_reaction = self.create_and_add_transport_reaction(metabolite_id)
+            transport_reactions.append(transport_reaction.id)
+
+        print(f"Added transport reactions to move {len(transport_reactions)} dead-end metabolites.")
+
+        return transport_reactions
+
+    def get_plausible_transports_for_dead_ends(self):
+        """
+        Create a dictionary of plausible transport reactions for each dead-end metabolite.
+        """
+        if self.dead_ends is None:
+            raise ValueError(
+                "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
+
+        # A dictionary to store the plausible transport reactions for each dead-end metabolite
+        plausible_transports = {}
+
+        # Identify transport reactions in the cloned model
+        for reaction in self.cloned_model.reactions:
+            # Transport reactions involve metabolites in different compartments
+            if len(reaction.compartments) > 1:
+                for metabolite in reaction.metabolites:
+                    # If the metabolite is a dead-end metabolite, add the reaction to its plausible transports
+                    if metabolite in self.dead_ends:
+                        if metabolite not in plausible_transports:
+                            plausible_transports[metabolite] = []
+                        plausible_transports[metabolite].append(reaction)
+
+        return plausible_transports
+
+    def create_and_add_transport_reaction(self, metabolite_id):
+        """
+        Create a new transport reaction for the given metabolite and add it to the cloned model.
+        """
+        # Create a new transport reaction
+        reaction_id = "TR_" + metabolite_id
+        transport_reaction = cobra.Reaction(reaction_id)
+        transport_reaction.name = "Transport reaction for metabolite {}".format(metabolite_id)
+
+        # Add the metabolite to transport from its current compartment to a different compartment
+        metabolite = self.cloned_model.metabolites.get_by_id(metabolite_id)
+        transport_reaction.add_metabolites({metabolite: -1.0})
+        transport_reaction.add_metabolites({metabolite_id + "_transport": 1.0})
+
+        # If the transport reaction is plausible, add it to the model
+        if self.is_plausible_transport(transport_reaction):
+            transport_reaction.lower_bound = -1000.0  # Allow negative flux (transport out of the compartment)
+            transport_reaction.upper_bound = 1000.0  # Allow positive flux (transport into the compartment)
+
+            # Add the reaction to the cloned model
+            self.cloned_model.add_reaction(transport_reaction)
+
+        return transport_reaction
+
+    def is_plausible_transport(self, transport_reaction):
+        """
+        Check if the given transport reaction is plausible.
+        """
+        # Check if the reaction is balanced
+        for metabolite in transport_reaction.metabolites:
+            if abs(transport_reaction.get_coefficient(metabolite)) != 1.0:
+                return False
+
+        # Check if the reaction is reversible, there are trnsport reactions that are irreversible tho
+        if transport_reaction.lower_bound < 0.0 or transport_reaction.upper_bound < 0.0:
+            return False
+
+        # Check if the reaction is thermodynamically feasible
