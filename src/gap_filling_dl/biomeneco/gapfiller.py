@@ -22,6 +22,8 @@ from multiprocessing import Pool
 class GapFiller:
     def __init__(self, model_path, universal_model_path):
 
+        self.transport_reactions_universal = None
+        self.transport_reactions = None
         self.dead_ends = None
         self.cloned_model = None
         self.temporary_universal_model = None
@@ -38,6 +40,7 @@ class GapFiller:
         self._targets_path = None
         self.filled_model = None
         self.objective_function_id = None
+        self.reaction_dict = {r.id: r for r in self.universal_model.reactions}
 
     @property
     def seeds_path(self):
@@ -469,7 +472,7 @@ class GapFiller:
         model_copy.add_reactions(new_reactions)
 
         # get the transport reactions
-        cloned_transport_reactions = self.get_transport_reactions()
+        cloned_transport_reactions = self.get_transport_reactions_of_draft(False)
 
         # add the transport reactions to the model
         model_copy.add_reactions(cloned_transport_reactions)
@@ -544,18 +547,33 @@ class GapFiller:
     #
     #     return model_copy
 
-    def get_transport_reactions(self) -> list:
+    def get_transport_reactions_of_draft(self, clone: bool = False) -> list:
         """
-        Get all the transport reactions in the model
+        Get all the transport reactions in the draft model
         """
+        self.transport_reactions = [r for r in self.original_model.reactions if len(r.compartments) > 1]
+
+        if clone:
+            return [rxn.copy() for rxn in self.transport_reactions]
+        else:
+            return self.transport_reactions
+
+    def get_transport_reactions_of_universal(self, **kwargs) -> list:
+        """
+        Get all the transport reactions in the universal model
+        """
+
+        # check if cloned_model exists
+        if self.cloned_model is None:
+            self.cloned_model = self.clone_reactions(**kwargs)
+
+        else:
+            print("Using existing cloned model.")
 
         # get all the transport reactions in the model
-        transport_reactions = [r for r in self.original_model.reactions if len(r.compartments) > 1]
+        self.transport_reactions_universal = [r for r in self.cloned_model.reactions if len(r.compartments) > 1]
 
-        # clone the transport reactions
-        cloned_transport_reactions = [copy.deepcopy(rxn) for rxn in transport_reactions]
-
-        return cloned_transport_reactions
+        return self.transport_reactions_universal
 
     def get_dead_end_metabolites(self, model: cobra.Model = None) -> list:
         """
@@ -620,6 +638,8 @@ class GapFiller:
             if biomass_component_role == "Reactant" and not biomass_component_analysis:
                 dead_ends.append(biomass_components[biomass_component].get("identifier"))
 
+        self.dead_ends = dead_ends
+
         return dead_ends
 
     def fill_dead_ends(self):
@@ -632,78 +652,98 @@ class GapFiller:
         if self.cloned_model is None:
             raise ValueError("The model has not been cloned. Please run the cloning step first.")
 
-        # Filter dead-end metabolites that are already present in the model
-        filtered_dead_ends = [metabolite for metabolite in self.dead_ends if
-                              metabolite not in self.cloned_model.metabolites]
+        self.add_known_transport_reactions()
 
-        transport_reactions = []
-        for metabolite_id in filtered_dead_ends:
-            transport_reaction = self.create_and_add_transport_reaction(metabolite_id)
-            transport_reactions.append(transport_reaction.id)
+        metabolites_set = set(self.cloned_model.metabolites)
+        filtered_dead_ends = [metabolite for metabolite in self.dead_ends if metabolite not in metabolites_set]
 
-        print(f"Added transport reactions to move {len(transport_reactions)} dead-end metabolites.")
+        print(f"Filled {len(filtered_dead_ends)} dead-end metabolites.")
 
-        return transport_reactions
+        return filtered_dead_ends
 
-    def get_plausible_transports_for_dead_ends(self):
+    def add_known_transport_reactions(self):
         """
-        Create a dictionary of plausible transport reactions for each dead-end metabolite.
+        Add known transport reactions to the model to resolve dead-end metabolites.
         """
         if self.dead_ends is None:
-            raise ValueError(
-                "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
+            dead_ends = self.get_dead_end_metabolites()
+        else:
+            dead_ends = self.dead_ends
 
-        # A dictionary to store the plausible transport reactions for each dead-end metabolite
-        plausible_transports = {}
+        transport_reactions = {met: [] for met in dead_ends}
+        for reaction in self.transport_reactions:
+            for met in reaction.metabolites:
+                if met in transport_reactions:
+                    transport_reactions[met].append(reaction.id)
 
-        # Identify transport reactions in the cloned model
-        for reaction in self.cloned_model.reactions:
-            # Transport reactions involve metabolites in different compartments
-            if len(reaction.compartments) > 1:
-                for metabolite in reaction.metabolites:
-                    # If the metabolite is a dead-end metabolite, add the reaction to its plausible transports
-                    if metabolite in self.dead_ends:
-                        if metabolite not in plausible_transports:
-                            plausible_transports[metabolite] = []
-                        plausible_transports[metabolite].append(reaction)
+        for met in dead_ends:
+            for reaction_id in transport_reactions[met]:
+                reaction = self.reaction_dict[reaction_id]
+                self.original_model.add_reactions([reaction.copy()])
 
-        return plausible_transports
+        print(f"Added known transport reactions for dead-end metabolites.")
 
-    def create_and_add_transport_reaction(self, metabolite_id):
-        """
-        Create a new transport reaction for the given metabolite and add it to the cloned model.
-        """
-        # Create a new transport reaction
-        reaction_id = "TR_" + metabolite_id
-        transport_reaction = cobra.Reaction(reaction_id)
-        transport_reaction.name = "Transport reaction for metabolite {}".format(metabolite_id)
 
-        # Add the metabolite to transport from its current compartment to a different compartment
-        metabolite = self.cloned_model.metabolites.get_by_id(metabolite_id)
-        transport_reaction.add_metabolites({metabolite: -1.0})
-        transport_reaction.add_metabolites({metabolite_id + "_transport": 1.0})
 
-        # If the transport reaction is plausible, add it to the model
-        if self.is_plausible_transport(transport_reaction):
-            transport_reaction.lower_bound = -1000.0  # Allow negative flux (transport out of the compartment)
-            transport_reaction.upper_bound = 1000.0  # Allow positive flux (transport into the compartment)
+    # def create_and_add_transport_reaction(self, metabolite_id):
+    #     """
+    #     Create a new transport reaction for the given metabolite and add it to the cloned model.
+    #     """
+    #     # Create a new transport reaction
+    #     reaction_id = "TR_" + metabolite_id
+    #     transport_reaction = cobra.Reaction(reaction_id)
+    #     transport_reaction.name = "Transport reaction for metabolite {}".format(metabolite_id)
+    #
+    #     # Add the metabolite to transport from its current compartment to a different compartment
+    #     metabolite = self.cloned_model.metabolites.get_by_id(metabolite_id)
+    #     transport_reaction.add_metabolites({metabolite: -1.0})
+    #     transport_reaction.add_metabolites({metabolite_id + "_transport": 1.0})
+    #
+    #     # If the transport reaction is plausible, add it to the model
+    #     if self.is_plausible_transport(transport_reaction):
+    #         transport_reaction.lower_bound = -1000.0  # Allow negative flux (transport out of the compartment)
+    #         transport_reaction.upper_bound = 1000.0  # Allow positive flux (transport into the compartment)
+    #
+    #         # Add the reaction to the cloned model
+    #         self.cloned_model.add_reaction(transport_reaction)
+    #
+    #     return transport_reaction
+    #
+    # def is_plausible_transport(self, transport_reaction):
+    #     """
+    #     Check if the given transport reaction is plausible.
+    #     """
+    #     # Check if the reaction is balanced
+    #     for metabolite in transport_reaction.metabolites:
+    #         if abs(transport_reaction.get_coefficient(metabolite)) != 1.0:
+    #             return False
+    #
+    #     # Check if the reaction is reversible, there are trnsport reactions that are irreversible tho
+    #     if transport_reaction.lower_bound < 0.0 or transport_reaction.upper_bound < 0.0:
+    #         return False
+    #
+    #     # Check if the reaction is thermodynamically feasible
 
-            # Add the reaction to the cloned model
-            self.cloned_model.add_reaction(transport_reaction)
-
-        return transport_reaction
-
-    def is_plausible_transport(self, transport_reaction):
-        """
-        Check if the given transport reaction is plausible.
-        """
-        # Check if the reaction is balanced
-        for metabolite in transport_reaction.metabolites:
-            if abs(transport_reaction.get_coefficient(metabolite)) != 1.0:
-                return False
-
-        # Check if the reaction is reversible, there are trnsport reactions that are irreversible tho
-        if transport_reaction.lower_bound < 0.0 or transport_reaction.upper_bound < 0.0:
-            return False
-
-        # Check if the reaction is thermodynamically feasible
+    # def get_plausible_transports_for_dead_ends(self):
+    #     """
+    #     Create a dictionary of plausible transport reactions for each dead-end metabolite.
+    #     """
+    #     if self.dead_ends is None:
+    #         raise ValueError(
+    #             "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
+    #
+    #     # A dictionary to store the plausible transport reactions for each dead-end metabolite
+    #     plausible_transports = {}
+    #
+    #     # Identify transport reactions in the cloned model
+    #     for reaction in self.cloned_model.reactions:
+    #         # Transport reactions involve metabolites in different compartments
+    #         if len(reaction.compartments) > 1:
+    #             for metabolite in reaction.metabolites:
+    #                 # If the metabolite is a dead-end metabolite, add the reaction to its plausible transports
+    #                 if metabolite in self.dead_ends:
+    #                     if metabolite not in plausible_transports:
+    #                         plausible_transports[metabolite] = []
+    #                     plausible_transports[metabolite].append(reaction)
+    #
+    #     return plausible_transports
