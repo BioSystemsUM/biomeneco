@@ -1,4 +1,12 @@
+from copy import deepcopy
+
+import cobra
+from cobra.flux_analysis import flux_variability_analysis
+
 from gap_filling_dl.my_classes import Model
+
+from bioservices import KEGG
+from typing import Dict
 
 
 def get_metabolite_pathway_map(model):
@@ -15,7 +23,8 @@ def get_metabolite_pathway_map(model):
             if reaction.id in model.reaction_pathway_map.keys():
                 for pathway in model.reaction_pathway_map[reaction.id]:
                     if pathway not in metabolite_pathway_map.get(metabolite.id, []):
-                        metabolite_pathway_map[metabolite.id] = metabolite_pathway_map.get(metabolite.id, []) + [pathway]
+                        metabolite_pathway_map[metabolite.id] = metabolite_pathway_map.get(metabolite.id, []) + [
+                            pathway]
     return metabolite_pathway_map
 
 
@@ -40,4 +49,89 @@ def get_reaction_pathway_map(model: Model) -> Model:
         pathway_map[key] = list(set(value))
     model.reaction_pathway_map = pathway_map
     return model
+
+
+def get_kegg_reaction_ids():
+    kegg = KEGG()
+    kegg_reaction_ids = kegg.parse(kegg.list("reaction"))  # Get a list of KEGG reaction identifiers
+    return kegg_reaction_ids
+
+
+def map_reaction_names_to_kegg_ids(model, chunk_size=100) -> Dict[str, str]:
+    kegg = KEGG()
+    kegg_id_mapping = {}
+
+    reaction_ids = [reaction.id for reaction in model.reactions]  # Get a list of reaction IDs
+
+    # Split reaction_ids into chunks
+    reaction_chunks = [reaction_ids[i:i + chunk_size] for i in range(0, len(reaction_ids), chunk_size)]
+
+    # não está a funcionar
+    for reaction_chunk in reaction_chunks:
+        for reaction_id in reaction_chunk:
+            # Perform a search for the reaction name
+            search_result = kegg.find("reaction", reaction_id)
+            print(f"Query: {reaction_id}")
+            print(f"Search result: {search_result}")
+            search_result = search_result.split("\n")
+
+            # Map the found KEGG IDs to reaction names
+            for result in search_result:
+                if result:
+                    kegg_id, reaction_name = result.split("\t")
+                    kegg_id_mapping[reaction_name] = kegg_id
+
+    return kegg_id_mapping
+
+
+def get_compartments_in_model(model: cobra.Model) -> list:
+    """
+    Get a list of compartments in a model.
+    Parameters
+    ----------
+    model
+
+    Returns
+    -------
+
+    """
+    compartments = set()
+    for reaction in model.reactions:
+        compartment = reaction.id.split('_')[-1]
+        compartments.add(compartment)
+
+    # convert to list
+    compartments = list(compartments)
+
+    return compartments
+
+
+def identify_dead_end_metabolites(model: cobra.Model) -> list:
+    """
+    Identify dead-end metabolites in a model.
+    Parameters
+    ----------
+    model
+
+    Returns
+    -------
+
+    """
+
+    dead_ends = []
+
+    for metabolite in model.metabolites:
+
+        reactions = list(metabolite.reactions)  # get the reactions in which the metabolite participates
+
+        if len(reactions) == 1:  # filtrar metabolitos que participam apenas numa reação
+
+            fva_result = flux_variability_analysis(model, reaction_list=reactions)
+
+            if all((fva_result.maximum == 0) & (fva_result.minimum == 0)):
+                dead_ends.append(metabolite.id)
+
+    print(f"Number of dead-end metabolites found: {len(dead_ends)}")
+
+    return dead_ends
 
