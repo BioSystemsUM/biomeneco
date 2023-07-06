@@ -21,7 +21,9 @@
       <species id="M_C00305_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00007_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C01330_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00014_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00080_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00031_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00059_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00205_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00009_out" compartment="C_out" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>

@@ -24,18 +24,14 @@
       <species id="M_C00458_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00097_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00079_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00041_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00183_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00062_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00148_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00047_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00073_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00135_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00037_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00407_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00123_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00152_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00188_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_C00082_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>

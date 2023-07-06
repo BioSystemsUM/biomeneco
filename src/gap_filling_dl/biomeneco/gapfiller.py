@@ -90,7 +90,7 @@ class GapFiller:
 
             draftnet = sbml.readSBMLnetwork(self.model_path, 'draft')
             repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repair')
-            seeds = seeds = sbml.readSBMLseeds(self.seeds_path)
+            seeds = sbml.readSBMLseeds(self.seeds_path)
             targets = sbml.readSBMLtargets(self.targets_path)
 
             # Call the get_minimal_completion_size function this order: draftnet, repairnet, seeds, targets)
@@ -147,7 +147,7 @@ class GapFiller:
         seeds_file = None
         targets_file = None
         universal_model_file = None
-
+        t = os.listdir(folder_path)
         for file in os.listdir(folder_path):
             file_path = os.path.join(folder_path, file)
             print(f"Checking file: {file_path}")
