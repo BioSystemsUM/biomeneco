@@ -11,28 +11,28 @@
       </unitDefinition>
     </listOfUnitDefinitions>
     <listOfCompartments>
-      <compartment id="C_in" constant="true"/>
+      <compartment id="C_cytop" constant="true"/>
     </listOfCompartments>
     <listOfSpecies>
-      <species id="M_C00032_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00016_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00378_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00061_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00018_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00019_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00255_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00458_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00097_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00079_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00062_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00148_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00047_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00073_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00135_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00037_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00123_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00152_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00082_in" compartment="C_in" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00032__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00016__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00378__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00061__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00018__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00019__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00255__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00458__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00097__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00079__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00062__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00148__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00047__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00073__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00135__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00037__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00123__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00152__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00082__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>
       <parameter sboTerm="SBO:0000626" id="cobra_default_lb" value="-1000" constant="true"/>

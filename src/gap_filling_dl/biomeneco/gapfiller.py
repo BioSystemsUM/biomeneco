@@ -1,27 +1,27 @@
-import multiprocessing
 import os
 import time
+from functools import partial
 from typing import List
 
 import cobra
 from bioiso import BioISO, set_solver
-
-from cobra.flux_analysis import flux_variability_analysis
+from cobra.core import Group
+from cobra.io import write_sbml_model
 from meneco.query import get_minimal_completion_size
 from meneco.meneco import run_meneco
 from meneco.meneco import sbml
 import copy
-
 from gap_filling_dl.utils import build_temporary_universal_model
 from gap_filling_dl.biomeneco.utils import get_compartments_in_model
 from gap_filling_dl.biomeneco.utils import identify_dead_end_metabolites
-
-from multiprocessing import Pool
+from parallelbar import progress_imap
 
 
 class GapFiller:
     def __init__(self, model_path, universal_model_path):
 
+        self.universal_model_copy = None
+        self.universal_model_compartmentalized = None
         self.dead_ends = None
         self.cloned_model = None
         self.temporary_universal_model = None
@@ -116,7 +116,7 @@ class GapFiller:
             repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repair')
             seeds = sbml.readSBMLseeds(self.seeds_path)
             targets = sbml.readSBMLtargets(self.targets_path)
-
+            print("Getting minimal completion...")
             # Call the get_minimal_completion_size function this order: draftnet, repairnet, seeds, targets)
             self.minimal_completion = get_minimal_completion_size(draftnet, repairnet, seeds, targets)
             time_end = time.time()
@@ -155,7 +155,7 @@ class GapFiller:
 
     @classmethod
     def from_folder(cls, folder_path, temporary_universal_model: bool = False, objective_function_id: str = None,
-                    **kwargs):
+                    compartments=None, **kwargs):
         """
         Create a GapFiller object from a folder.
 
@@ -211,13 +211,12 @@ class GapFiller:
         gap_filler.original_model = original_model
         gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
-
+        gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
         if temporary_universal_model and gap_filler.temporary_universal_model is None:
             if not objective_function_id:
                 raise ValueError(
                     "Objective function ID must be specified for the creation of a temporary universal model.")
-
-            build_temporary_universal_model(gap_filler, folder_path, **kwargs)
+            build_temporary_universal_model(gap_filler, folder_path, True)
 
             if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
                 print('Temporary universal model file successfully created.')
@@ -228,7 +227,6 @@ class GapFiller:
                     os.path.join(folder_path, 'temporary_universal_model.xml'))
             else:
                 raise FileNotFoundError("Temporary universal model file not found.")
-
         return gap_filler
 
     def add_reactions_to_model(self, model, reactions: list[str]):
@@ -425,124 +423,59 @@ class GapFiller:
         #         print(f"\n\nReaction: {reaction} has been added to the model.")
         # return self.filled_model
 
-    def clone_reactions(self, with_temporary_universal_model: bool = False, **kwargs) -> cobra.Model:
+    def clone_model(self, compartments: list = None, **kwargs):
         # Get the compartments in the model
-        compartments = get_compartments_in_model(self.original_model)
+        if not compartments:
+            compartments = get_compartments_in_model(self.original_model)
 
-        if with_temporary_universal_model:
-            # check if the temporary universal model exists
-            if self.temporary_universal_model is None:
-                temporary_universal_model_path = os.path.join(kwargs['folder_path'], 'temporary_universal_model.xml')
-                if os.path.isfile(temporary_universal_model_path):
-                    self.temporary_universal_model = cobra.io.read_sbml_model(temporary_universal_model_path)
-                else:
-                    raise ValueError("Temporary universal model file does not exist.")
-            else:
-                print("Using existing temporary universal model.")
-
-            model_to_use = self.temporary_universal_model
-        else:
-            model_to_use = self.universal_model
+        model_to_use = self.universal_model
 
         new_reactions = []
+        self.universal_model_copy = model_to_use.copy()
 
-        # Create a pool of worker processes
-        pool = multiprocessing.Pool()
+        self.universal_model_compartmentalized = cobra.Model()
 
-        # Use pool.starmap to parallelize the cloning process
-        results = [
-            pool.starmap(self.clone_reaction, [(reaction, compartment) for compartment in compartments])
-            for reaction in model_to_use.reactions
-        ]
+        self.clone_metabolites(compartments)
 
-        # Collect the cloned reactions from the results
-        for result in results:
-            new_reactions.extend(result)
+        self.clone_reactions(compartments)
 
-        # Close the pool of worker processes
-        pool.close()
-        pool.join()
+        self.clone_groups(compartments)
 
-        # Create a copy of the original model
-        model_copy = self.original_model.copy()
-        # Add all new reactions to the copied model
-        model_copy.add_reactions(new_reactions)
+        self.universal_model_path = os.path.join(kwargs['folder_path'], 'universal_model_compartmentalized.xml')
 
-        # get the transport reactions
-        cloned_transport_reactions = self.get_transport_reactions()
+        write_sbml_model(self.universal_model_compartmentalized, self.universal_model_path)
 
-        # add the transport reactions to the model
-        model_copy.add_reactions(cloned_transport_reactions)
+    def clone_reaction(self, compartments, reactions):
+        cloned_reactions = []
+        for reaction in reactions:
+            for compartment in compartments:
+                cloned_reaction = reaction.copy()
+                cloned_reaction.id = '__'.join(reaction.id.split("__")[:-1]) + '__' + compartment
+                for metabolite in cloned_reaction.metabolites:
+                    st = cloned_reaction.metabolites[metabolite]
+                    new_metabolite_id_in_compartment = '__'.join(metabolite.id.split("__")[:-1]) + '__' + compartment
+                    metabolite_in_compartment = self.universal_model_copy.metabolites.get_by_id(new_metabolite_id_in_compartment)
+                    cloned_reaction.add_metabolites({metabolite: -st, metabolite_in_compartment: st})
+                cloned_reactions.append(cloned_reaction)
+        return cloned_reactions
 
-        self.cloned_model = model_copy
+    def clone_metabolites(self, compartments):
+        # print(len(self.universal_model_copy.metabolites))
+        # new_metabolites = Parallel(n_jobs=os.cpu_count())(delayed(self.clone_metabolite)(compartments, metabolite) for metabolite in self.universal_model_copy.metabolites)
+        list_of_batches = [self.universal_model_copy.metabolites[i:i + 100] for i in range(0, len(self.universal_model_copy.metabolites), 100)]
+        new_metabolites = progress_imap(partial(self.clone_metabolite, compartments), list_of_batches)
+        new_metabolites = [item for sublist in new_metabolites for item in sublist]
+        self.universal_model_copy.add_metabolites(new_metabolites)
 
-        return model_copy
-
-    def clone_reaction(self, reaction, compartment):
-        cloned_reaction = cobra.Reaction(id=reaction.id + '_' + compartment)
-        cloned_reaction.add_metabolites({
-            self.clone_metabolite(metabolite, compartment): coeff
-            for metabolite, coeff in reaction.metabolites.items()
-        })
-        return cloned_reaction
-
-    def clone_metabolite(self, metabolite, compartment):
-        cloned_metabolite = metabolite.copy()
-        cloned_metabolite.id = metabolite.id + '_' + compartment
-        cloned_metabolite.compartment = compartment
-        return cloned_metabolite
-
-    # def clone_reactions(self, with_temporary_universal_model: bool = False, **kwargs) -> cobra.Model:
-    #     # Get the compartments in the model
-    #     compartments = get_compartments_in_model(self.original_model)
-    #
-    #     # Prepare a new list to store all new reactions
-    #     new_reactions = []
-    #
-    #     if with_temporary_universal_model:
-    #         # check if the temporary universal model exists
-    #         if self.temporary_universal_model is None:
-    #
-    #             temporary_universal_model_path = os.path.join(kwargs['folder_path'], 'temporary_universal_model.xml')
-    #             if os.path.isfile(temporary_universal_model_path):
-    #                 self.temporary_universal_model = cobra.io.read_sbml_model(temporary_universal_model_path)
-    #
-    #             else:
-    #                 raise ValueError("Temporary universal model file does not exist.")
-    #         else:
-    #             print("Using existing temporary universal model.")
-    #
-    #         model_to_use = self.temporary_universal_model
-    #     else:
-    #         model_to_use = self.universal_model
-    #
-    #     for reaction in model_to_use.reactions:
-    #         for compartment in compartments:
-    #             # Clone reaction
-    #             cloned_reaction = copy.deepcopy(reaction)
-    #             # Change id and compartment of metabolites
-    #             for metabolite in cloned_reaction.metabolites:
-    #                 metabolite.id = metabolite.id + '_' + compartment
-    #                 metabolite.compartment = compartment
-    #             # Change id of reaction
-    #             cloned_reaction.id = cloned_reaction.id + '_' + compartment
-    #             # Add to list
-    #             new_reactions.append(cloned_reaction)
-    #
-    #     # Create a copy of the original model
-    #     model_copy = copy.deepcopy(self.original_model)
-    #     # Add all new reactions to the copied model
-    #     model_copy.add_reactions(new_reactions)
-    #
-    #     # get the transport reactions
-    #     cloned_transport_reactions = self.get_transport_reactions()
-    #
-    #     # add the transport reactions to the model
-    #     model_copy.add_reactions(cloned_transport_reactions)
-    #
-    #     self.cloned_model = model_copy
-    #
-    #     return model_copy
+    def clone_metabolite(self, compartments, metabolites):
+        cloned_metabolites = []
+        for metabolite in metabolites:
+            for compartment in compartments:
+                cloned_metabolite = metabolite.copy()
+                cloned_metabolite.id = '__'.join(metabolite.id.split("__")[:-1]) + '__' + compartment
+                cloned_metabolite.compartment = compartment
+                cloned_metabolites.append(cloned_metabolite)
+        return cloned_metabolites
 
     def get_transport_reactions(self) -> list:
         """
@@ -707,3 +640,44 @@ class GapFiller:
             return False
 
         # Check if the reaction is thermodynamically feasible
+
+    def clone_reactions(self, compartments):
+        """
+        Clone reactions in the model.
+        Parameters
+        ----------
+        compartments
+
+        Returns
+        -------
+
+        """
+        # results = Parallel(n_jobs=4)(delayed(self.clone_reaction)(reaction, compartment) for reaction in self.universal_model_copy.reactions for compartment in compartments)
+        list_of_batches = [self.universal_model_copy.reactions[i:i + 100] for i in
+                           range(0, len(self.universal_model_copy.reactions), 100)]
+        reactions = progress_imap(partial(self.clone_reaction, compartments), list_of_batches)
+        reactions = [item for sublist in reactions for item in sublist]
+        self.universal_model_compartmentalized.add_reactions(reactions)
+
+    def clone_groups(self, compartments):
+        """
+        Clone groups in the model.
+        Returns
+        -------
+
+        """
+        all_reactions_ids = [reaction.id for reaction in self.universal_model_compartmentalized.reactions]
+        new_groups = []
+        for group in self.universal_model_copy.groups:
+            new_members = []
+            group_copy = Group(id=group.id, name=group.name)
+            for compartment in compartments:
+                for member in group.members:
+                    reaction_id = '__'.join(member.id.split("__")[:-1]) + '__' + compartment
+                    if reaction_id in all_reactions_ids:
+                        new_members.append(self.universal_model_compartmentalized.reactions.get_by_id(reaction_id))
+                    else:
+                        print(f"Reaction {reaction_id} not found in the model")
+            group_copy.add_members(new_members)
+            new_groups.append(group_copy)
+        self.universal_model_compartmentalized.add_groups(new_groups)
