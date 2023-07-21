@@ -9,7 +9,6 @@ from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
 
-
 from gap_filling_dl.biomeneco.utils import get_metabolite_pathway_map, get_reaction_pathway_map
 from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
@@ -19,6 +18,8 @@ class Model(cobra.Model):
         self.reaction_pathway_map = get_reaction_pathway_map(model)
         self.metabolite_pathway_map = get_metabolite_pathway_map(model)
         self.objective_function_id = objective_function_id
+        self.pre_precursors = None
+        self.bio_precursors = None
         super().__init__(id_or_model=model, *args, **kwargs)
 
     @classmethod
@@ -66,7 +67,7 @@ class Model(cobra.Model):
 
         total_seeds = []
         total_seeds_ids = []
-        for reaction in self.exchanges:
+        for reaction in self.boundary:
             reactants = reaction.reactants
             for reactant in reactants:
                 if reactant.id not in total_seeds_ids and reaction.lower_bound < 0:
@@ -273,3 +274,90 @@ class Model(cobra.Model):
 
         return knockout_numbers
 
+    def get_bio_precursors(self):
+        """
+        This function returns the precursors of the biomass reaction
+        Returns
+        -------
+
+        """
+        self.bio_precursors = self.get_reactants(self.objective_function_id)
+        return self.bio_precursors
+
+    def get_pre_precursors(self):
+
+        ''' This function returns the precursors of the biomass precursors
+        retrieved earlier in the get_bio_precursors() function'''
+        try:
+            self.pre_precursors = {}
+            self.precursors_reactions = {}
+            if self.bio_precursors == None: self.get_bio_precursors()
+            for precursor in self.bio_precursors:
+                reactions = precursor.reactions
+                if len(reactions) > 2:
+                    print("ATP or other metabolite. Without unique precursor")
+                    self.pre_precursors[precursor.id] = []
+                else:
+                    reaction = Reaction()
+                    for r in reactions:
+                        if r.id != self.objective_function_id: reaction = r
+                    if reaction.id:
+                        self.pre_precursors[precursor.id] = self.get_reactants(reaction.id)
+                        self.precursors_reactions[precursor.name] = (reaction.id, precursor.id)
+        except Exception as e:
+            print(e)
+        return self.pre_precursors
+
+    def get_reaction(self, reaction):
+        try:
+            return self.reactions.get_by_id(reaction)
+        except:
+            print(reaction + " not found")
+
+    def get_products(self, reaction):
+        return self.get_reaction(reaction).products
+
+    def create_tRNAs_reactions(self, protein_id="e-Protein"):
+        """
+        This function creates the tRNA reactions for the protein synthesis
+        """
+        try:
+            if self.pre_precursors is None:
+                self.get_pre_precursors()
+
+            trnas = self.get_products(self.precursors_reactions[protein_id][0])
+
+            for trna in trnas:
+                if "H2O" not in trna.name and "e-Protein" not in trna.name:
+                    self.create_sink(trna.id)
+        except Exception as e:
+            print("No protein found in the model")
+            print(e)
+
+    def create_demand(self, metabolite_id):
+
+        ''' This function creates a demand reaction'''
+
+        reaction_name = "DM_" + metabolite_id
+        self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
+        self.get_reaction(reaction_name).bounds = (0, 10000)
+        return self.get_reaction(reaction_name)
+
+    def create_sink(self, metabolite_id, bounds=(-10000, 10000)):
+
+        ''' This function creates a sink reaction '''
+
+        reaction_name = "Sk_" + metabolite_id
+        self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
+        self.get_reaction(reaction_name).bounds = bounds
+        return self.get_reaction(reaction_name)
+
+    def create_reaction(self, reaction):
+        self.add_reactions([cobra.Reaction(reaction)])
+        return self.get_reaction(reaction)
+
+    def get_metabolite(self, metabolite):
+        return self.metabolites.get_by_id(metabolite)
+
+    def get_reactants(self, reaction):
+        return self.get_reaction(reaction).reactants

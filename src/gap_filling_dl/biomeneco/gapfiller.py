@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import time
 from functools import partial
@@ -6,12 +5,15 @@ from typing import List
 
 import cobra
 from bioiso import BioISO, set_solver
+from clyngor.as_pyasp import TermSet, Atom
 from cobra.core import Group
 from cobra.io import write_sbml_model
 from meneco.query import get_minimal_completion_size
 from meneco.meneco import run_meneco
 from meneco.meneco import sbml
 import copy
+
+from gap_filling_dl.biomeneco.model import Model
 from gap_filling_dl.utils import build_temporary_universal_model
 from gap_filling_dl.biomeneco.utils import get_compartments_in_model
 from gap_filling_dl.biomeneco.utils import identify_dead_end_metabolites
@@ -103,6 +105,9 @@ class GapFiller:
             Keyword arguments to pass to the gap-filling algorithm.
 
         """
+        if self.original_model is not None:
+            write_sbml_model(self.original_model, self.model_path)
+
         if self.original_model is None:
             self.original_model = cobra.io.read_sbml_model(self.model_path)
 
@@ -117,11 +122,29 @@ class GapFiller:
             time_start = time.time()
 
             draftnet = sbml.readSBMLnetwork(self.model_path, 'draft')
-            repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repair')
+            # repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repair')
             seeds = sbml.readSBMLseeds(self.seeds_path)
             targets = sbml.readSBMLtargets(self.targets_path)
             print("Getting minimal completion...")
             # Call the get_minimal_completion_size function this order: draftnet, repairnet, seeds, targets)
+            from meneco.meneco import query
+            model = query.get_unproducible(draftnet, targets, seeds)
+            unproducible = set([a[0] for pred in model if pred == 'unproducible_target' for a in model[pred]])
+            print('{0} unproducible targets:\n\t{1}\n'.format(len(unproducible), '\n\t'.join(unproducible)))
+            # labels = ["0", "1", "2", "3", "4"]
+            # for label in labels:
+            repairnet = sbml.readSBMLnetwork(f'../data/draft_synechocystis/temporary_universal_model.xml', 'repairnet')
+
+            combinet = draftnet
+            combinet = TermSet(combinet.union(repairnet))
+
+            model = query.get_unproducible(combinet, targets, seeds)
+            never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+            print('{0} unreconstructable targets:\n\t{1}\n'.format(len(never_producible), '\n\t'.join(never_producible)))
+
+            reconstructable_targets = set(list(unproducible.difference(never_producible)))
+            print('{0} reconstructable targets:\n\t{1}\n'.format(len(reconstructable_targets), '\n\t'.join(reconstructable_targets)))
+            targets = TermSet(Atom('target("' + t + '")') for t in reconstructable_targets)
             self.minimal_completion = get_minimal_completion_size(draftnet, repairnet, seeds, targets)
             time_end = time.time()
             self.gftime = time_end - time_start
@@ -208,7 +231,8 @@ class GapFiller:
 
         # Read the original model from the model file
         model_path = os.path.join(folder_path, model_file)
-        original_model = cobra.io.read_sbml_model(model_path)
+        original_model = Model.from_sbml(model_path, objective_function_id)
+        original_model.create_tRNAs_reactions()
 
         # Create the GapFiller object with the original model
         gap_filler = cls(model_path=model_path, universal_model_path=os.path.join(folder_path, universal_model_file))
@@ -216,6 +240,7 @@ class GapFiller:
         gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
         gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
+        # gap_filler.universal_model_path = os.path.join(folder_path, 'universal_model_compartmentalized.xml')   # to remove, just for debugging
         if temporary_universal_model and gap_filler.temporary_universal_model is None:
             if not objective_function_id:
                 raise ValueError(
@@ -227,8 +252,8 @@ class GapFiller:
                 gap_filler.universal_model_path = os.path.join(folder_path, 'temporary_universal_model.xml')
                 print('Temporary universal model file path:', gap_filler.universal_model_path)
 
-                gap_filler.temporary_universal_model = cobra.io.read_sbml_model(
-                    os.path.join(folder_path, 'temporary_universal_model.xml'))
+                gap_filler.temporary_universal_model = cobra.io.read_sbml_model(os.path.join(folder_path, 'temporary_universal_model.xml'))
+                gap_filler.universal_model = gap_filler.temporary_universal_model
             else:
                 raise FileNotFoundError("Temporary universal model file not found.")
         return gap_filler
@@ -247,28 +272,19 @@ class GapFiller:
         # reactions = [reaction.replace('R_', '') if 'R_' in reaction else reaction for reaction in reactions]
         # print('after replacement:', reactions)
         #
-        # for r, _ in self.minimal_completion['xreaction']:  # unpack the tuple and ignore the second element
-        #     # change the reaction ID to the one used in the universal model
-        #     r = r.replace('R_', '')
-        #
-        #     # search for the reaction in the universal model
-        #     reaction = self.universal_model.reactions.get_by_id(r)
-        #     # add the reaction to the model
-        #     model.add_reactions([reaction])
-        #     if reaction in model.reactions:
-        #         print('Reaction {} added to model.'.format(r))
-        #     else:
-        #         print('Reaction {} could not be added to model.'.format(r))
+        reaction_ids_in_draft = set([reaction.id.replace('R_', '') for reaction in  model.reactions])
+        reaction_ids_in_universal = set([reaction.id.replace('R_', '') for reaction in self.universal_model.reactions])
         for reaction in reactions:
             reaction_id = reaction[0]  # Get the reaction ID from the tuple
             # Remove the 'R_' prefix
             clean_reaction_id = reaction_id.replace('R_', '', 1)
-            try:
-                save_reaction = self.universal_model.reactions.get_by_id(clean_reaction_id)
-                model.add_reactions([save_reaction])
-            except KeyError:
+            if clean_reaction_id in reaction_ids_in_draft:
+                print(f"Reaction {clean_reaction_id} already in model. Check its reversibility!")
+                continue
+            elif clean_reaction_id in reaction_ids_in_universal:
+                    model.add_reactions([self.universal_model.reactions.get_by_id(clean_reaction_id)])
+            else:
                 print(f"The reaction ID '{clean_reaction_id}' could not be found in the universal model.")
-
         return model
 
     def report(self, write_to_file=False, removed_reactions: list = None, objective_function_id: str = None, **kwargs):
@@ -285,7 +301,7 @@ class GapFiller:
         if self.gftime is not None:
             report += "Execution Time: {:.2f} seconds\n".format(self.gftime)
 
-        if self.minimal_completion is not None:
+        if self.minimal_completion is not None and len(self.minimal_completion) > 0:
             report += 'This report is based on the minimal completion of the draft network, which is faster. ' \
                       '(This is not the optimized solution.)\n'
 
@@ -304,7 +320,7 @@ class GapFiller:
                 # add the reaction to the model
 
                 report += '- {}\n'.format(r)
-                self.add_reactions_to_model(self.filled_model, [r])
+                self.filled_model = self.add_reactions_to_model(self.filled_model, [r])
                 # print the reaction added
 
                 # verify if the reaction is in the model
@@ -434,7 +450,6 @@ class GapFiller:
 
         model_to_use = self.universal_model
 
-        new_reactions = []
         self.universal_model_copy = model_to_use.copy()
 
         self.universal_model_compartmentalized = cobra.Model()
@@ -447,8 +462,18 @@ class GapFiller:
 
         self.universal_model_path = os.path.join(kwargs['folder_path'], 'universal_model_compartmentalized.xml')
         # get the transport reactions
-        cloned_transport_reactions = self.get_transport_reactions_of_draft(False)
-
+        # cloned_transport_reactions = self.get_transport_reactions_of_draft(False)
+        # for reaction in self.universal_model_compartmentalized.reactions:
+        #         reaction.bounds = (-1000, 1000)
+        # demands =[]
+        # for metabolite in self.universal_model_compartmentalized.metabolites:
+        #     if len(metabolite.reactions) <= 1:
+        #         # add demand reaction
+        #         demand_reaction = cobra.Reaction('DM_' + metabolite.id, name = "Demand reaction for " + metabolite.id)
+        #         demand_reaction.add_metabolites({metabolite: -1})
+        #         demand_reaction.bounds = (0, 1000)
+        #         demands.append(demand_reaction)
+        # self.universal_model_compartmentalized.add_reactions(demands)
         write_sbml_model(self.universal_model_compartmentalized, self.universal_model_path)
 
     def clone_reaction(self, compartments, reactions):
