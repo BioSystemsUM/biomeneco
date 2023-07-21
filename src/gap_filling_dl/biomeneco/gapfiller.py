@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import time
 from functools import partial
@@ -5,6 +6,7 @@ from typing import List
 
 import cobra
 from bioiso import BioISO, set_solver
+from cobra import Reaction, Metabolite
 from clyngor.as_pyasp import TermSet, Atom
 from cobra.core import Group
 from cobra.io import write_sbml_model
@@ -182,7 +184,7 @@ class GapFiller:
 
     @classmethod
     def from_folder(cls, folder_path, temporary_universal_model: bool = False, objective_function_id: str = None,
-                    compartments=None, **kwargs):
+                    compartments=None, clone=True, **kwargs):
         """
         Create a GapFiller object from a folder.
 
@@ -198,26 +200,39 @@ class GapFiller:
         seeds_file = None
         targets_file = None
         universal_model_file = None
+        found_compartmentalized = False  # Initialize before the loop
+        compartmentalized_file_path = None  # variable to store the file path
 
         for file in os.listdir(folder_path):
             file_path = os.path.join(folder_path, file)
             print(f"Checking file: {file_path}")
+
             if file.endswith(".xml"):
-                if "model" in file and "universal" not in file and "seeds" not in file and "targets" not in file:
+                if "model" in file and "universal" not in file and "seeds" not in file and "targets" not in file and\
+                        'compartimentalized' not in file and 'temporary' not in file:
                     model_file = file
                 if "seeds" in file:
                     seeds_file = file
                 if "targets" in file:
                     targets_file = file
-                elif "universal_model" in file and 'temporary' not in file:
+                if "compartmentalized" in file and clone:
+                    compartmentalized_file_path = file_path
+                    found_compartmentalized = True
+                    print("Found compartmentalized universal model.")
+                if file == "temporary_universal_model.xml" and temporary_universal_model:
                     universal_model_file = file
-
-                print(f"Found file: {file}")
+                    print("Found temporary universal model.")
+                elif file == "universal_model.xml" and not universal_model_file:  # this checks if universal_model_file isn't already set
+                    universal_model_file = file
+                    print("Found universal model.")
+                else:
+                    continue
 
         print(f"model_file: {model_file}")
         print(f"seeds_file: {seeds_file}")
         print(f"targets_file: {targets_file}")
         print(f"universal_model_file: {universal_model_file}")
+
 
         # assure that all files are found and raise an error if not
         if not model_file:
@@ -242,6 +257,19 @@ class GapFiller:
         gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
         # gap_filler.universal_model_path = os.path.join(folder_path, 'universal_model_compartmentalized.xml')   # to remove, just for debugging
         if temporary_universal_model and gap_filler.temporary_universal_model is None:
+
+        # Here we check the flag to determine whether to clone the model or not
+        if compartmentalized_file_path and clone:
+            gap_filler.universal_model_compartmentalized = cobra.io.read_sbml_model(compartmentalized_file_path)
+        if not found_compartmentalized and clone:
+            gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
+
+        # print if the cloned_model is being used
+        if hasattr(gap_filler,
+                   'universal_model_compartmentalized') and gap_filler.universal_model_compartmentalized is not None:
+            print("Cloned model is being used.")
+
+        if temporary_universal_model and not hasattr(gap_filler, 'temporary_universal_model'):
             if not objective_function_id:
                 raise ValueError(
                     "Objective function ID must be specified for the creation of a temporary universal model.")
@@ -278,13 +306,12 @@ class GapFiller:
             reaction_id = reaction[0]  # Get the reaction ID from the tuple
             # Remove the 'R_' prefix
             clean_reaction_id = reaction_id.replace('R_', '', 1)
-            if clean_reaction_id in reaction_ids_in_draft:
-                print(f"Reaction {clean_reaction_id} already in model. Check its reversibility!")
-                continue
-            elif clean_reaction_id in reaction_ids_in_universal:
-                    model.add_reactions([self.universal_model.reactions.get_by_id(clean_reaction_id)])
-            else:
+            try:
+                save_reaction = self.universal_model.reactions.get_by_id(clean_reaction_id)
+                model.add_reactions([save_reaction])
+            except KeyError:
                 print(f"The reaction ID '{clean_reaction_id}' could not be found in the universal model.")
+
         return model
 
     def report(self, write_to_file=False, removed_reactions: list = None, objective_function_id: str = None, **kwargs):
@@ -450,6 +477,7 @@ class GapFiller:
 
         model_to_use = self.universal_model
 
+        new_reactions = []
         self.universal_model_copy = model_to_use.copy()
 
         self.universal_model_compartmentalized = cobra.Model()
@@ -485,7 +513,8 @@ class GapFiller:
                 for metabolite in cloned_reaction.metabolites:
                     st = cloned_reaction.metabolites[metabolite]
                     new_metabolite_id_in_compartment = '__'.join(metabolite.id.split("__")[:-1]) + '__' + compartment
-                    metabolite_in_compartment = self.universal_model_copy.metabolites.get_by_id(new_metabolite_id_in_compartment)
+                    metabolite_in_compartment = self.universal_model_copy.metabolites.get_by_id(
+                        new_metabolite_id_in_compartment)
                     cloned_reaction.add_metabolites({metabolite: -st, metabolite_in_compartment: st})
                 cloned_reactions.append(cloned_reaction)
         return cloned_reactions
@@ -493,7 +522,8 @@ class GapFiller:
     def clone_metabolites(self, compartments):
         # print(len(self.universal_model_copy.metabolites))
         # new_metabolites = Parallel(n_jobs=os.cpu_count())(delayed(self.clone_metabolite)(compartments, metabolite) for metabolite in self.universal_model_copy.metabolites)
-        list_of_batches = [self.universal_model_copy.metabolites[i:i + 100] for i in range(0, len(self.universal_model_copy.metabolites), 100)]
+        list_of_batches = [self.universal_model_copy.metabolites[i:i + 100] for i in
+                           range(0, len(self.universal_model_copy.metabolites), 100)]
         new_metabolites = progress_imap(partial(self.clone_metabolite, compartments), list_of_batches)
         new_metabolites = [item for sublist in new_metabolites for item in sublist]
         self.universal_model_copy.add_metabolites(new_metabolites)
@@ -519,22 +549,22 @@ class GapFiller:
         else:
             return self.transport_reactions
 
-    def get_transport_reactions_of_universal(self, **kwargs) -> list:
-        """
-        Get all the transport reactions in the universal model
-        """
-
-        # check if cloned_model exists
-        if self.cloned_model is None:
-            self.cloned_model = self.clone_reactions(**kwargs)
-
-        else:
-            print("Using existing cloned model.")
-
-        # get all the transport reactions in the model
-        self.transport_reactions_universal = [r for r in self.cloned_model.reactions if len(r.compartments) > 1]
-
-        return self.transport_reactions_universal
+    # def get_transport_reactions_of_universal(self, **kwargs) -> list:
+    #     """
+    #     Get all the transport reactions in the universal model
+    #     """
+    #
+    #     # check if cloned_model exists
+    #     if self.cloned_model is None:
+    #         self.cloned_model = self.clone_reactions(**kwargs)
+    #
+    #     else:
+    #         print("Using existing cloned model.")
+    #
+    #     # get all the transport reactions in the model
+    #     self.transport_reactions_universal = [r for r in self.cloned_model.reactions if len(r.compartments) > 1]
+    #
+    #     return self.transport_reactions_universal
 
     def get_dead_end_metabolites(self, model: cobra.Model = None) -> list:
         """
@@ -551,7 +581,7 @@ class GapFiller:
             return identify_dead_end_metabolites(model)
 
     def identify_dead_end_metabolites_with_bioiso(self, objective_function_id, objective: str = 'maximize',
-                                                  solver: str = 'cplex') -> List[str]:
+                                                  solver: str = 'cplex', **kwargs) -> List[str]:
         """
         Identify dead-end metabolites in a model using BioISO.
 
@@ -564,27 +594,19 @@ class GapFiller:
 
         Parameters
         ----------
+        solver
+        objective
         objective_function_id
         """
 
-        self.objective_function_id = objective_function_id
-
-        if not isinstance(self.objective_function_id, str) or not self.objective_function_id:
-            objective_function = self.objective_function_id
-            if not isinstance(objective_function, str) or not objective_function:
-                raise ValueError("The objective function must be a string.")
-
-        if not isinstance(objective, str) or not objective:
-            raise ValueError("The objective must be a string.")
-
-        if not isinstance(solver, str) or not solver:
-            raise ValueError("The solver must be a string.")
+        if self.objective_function_id is None:
+            self.objective_function_id = objective_function_id
 
         # Set the solver
         set_solver(self, solver)
 
         # Run BioISO
-        bio = BioISO(self.objective_function_id, self, objective)
+        bio = BioISO(self.objective_function_id, self.original_model, objective)
         bio.run(2, False)
 
         # Get the results
@@ -595,32 +617,40 @@ class GapFiller:
 
         for biomass_component in biomass_components:
             biomass_component_role = biomass_components[biomass_component].get("role")
-            biomass_component_analysis = biomass_components[biomass_component].get("analysis")
-            if biomass_component_role == "Reactant" and not biomass_component_analysis:
-                dead_ends.append(biomass_components[biomass_component].get("identifier"))
+            specific_biomass_components = biomass_components[biomass_component].get("next")
+            for specific_biomass_component in specific_biomass_components:
+                specific_biomass_component_report = specific_biomass_components[specific_biomass_component]
+                analysis = specific_biomass_component_report.get("analysis")
+                role = specific_biomass_component_report.get("role")
+
+                if not analysis and ((role == "Reactant" and biomass_component_role == "Reactant") or
+                                     (role == "Product" and biomass_component_role == "Product")):
+                    metabolite_id = specific_biomass_component_report.get("identifier")
+                    if metabolite_id not in dead_ends:
+                        dead_ends.append(metabolite_id)
 
         self.dead_ends = dead_ends
 
         return dead_ends
 
-    def fill_dead_ends(self):
-        """
-        Fill the dead-end metabolites in the model using transport reactions.
-        """
-        if self.dead_ends is None:
-            raise ValueError(
-                "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
-        if self.cloned_model is None:
-            raise ValueError("The model has not been cloned. Please run the cloning step first.")
-
-        self.add_known_transport_reactions()
-
-        metabolites_set = set(self.cloned_model.metabolites)
-        filtered_dead_ends = [metabolite for metabolite in self.dead_ends if metabolite not in metabolites_set]
-
-        print(f"Filled {len(filtered_dead_ends)} dead-end metabolites.")
-
-        return filtered_dead_ends
+    # def fill_dead_ends(self):
+    #     """
+    #     Fill the dead-end metabolites in the model using transport reactions.
+    #     """
+    #     if self.dead_ends is None:
+    #         raise ValueError(
+    #             "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
+    #     if self.cloned_model is None:
+    #         raise ValueError("The model has not been cloned. Please run the cloning step first.")
+    #
+    #     self.add_known_transport_reactions()
+    #
+    #     metabolites_set = set(self.cloned_model.metabolites)
+    #     filtered_dead_ends = [metabolite for metabolite in self.dead_ends if metabolite not in metabolites_set]
+    #
+    #     print(f"Filled {len(filtered_dead_ends)} dead-end metabolites.")
+    #
+    #     return filtered_dead_ends
 
     def add_known_transport_reactions(self):
         """
@@ -643,8 +673,6 @@ class GapFiller:
                 self.original_model.add_reactions([reaction.copy()])
 
         print(f"Added known transport reactions for dead-end metabolites.")
-
-
 
     # def create_and_add_transport_reaction(self, metabolite_id):
     #     """
@@ -749,3 +777,197 @@ class GapFiller:
             group_copy.add_members(new_members)
             new_groups.append(group_copy)
         self.universal_model_compartmentalized.add_groups(new_groups)
+
+    @staticmethod
+    def met_is_being_consumed_or_produced_at_reaction(met_id: str, reaction: cobra.Reaction):
+        """
+        This function checks if a metabolite is being consumed or produced at a reaction
+
+        Parameters
+        ----------
+        met_id: str
+            The ID of the metabolite.
+        reaction: cobra.Reaction
+            The reaction to check.
+
+        Returns
+        -------
+        str
+            'consumed' if the metabolite is a reactant in the reaction,
+            'produced' if the metabolite is a product of the reaction,
+            'not involved' if the metabolite is neither a reactant nor a product of the reaction.
+        """
+        metabolite = reaction.model.metabolites.get_by_id(met_id)
+        if metabolite in reaction.reactants:
+            return 'consumed'
+        elif metabolite in reaction.products:
+            return 'produced'
+        else:
+            return 'not involved'
+
+        # for met in dead_end_metabolites:...
+
+    def check_metabolite_in_reaction(self, met_id: str, reactions: list = None) -> dict:
+        """
+        This function checks if a metabolite is being consumed or produced at a reaction
+
+        Parameters
+        ----------
+        met_id: str
+            The ID of the metabolite.
+        reaction: cobra.Reaction
+            The reaction to check.
+
+        Returns
+        -------
+        str
+            'consumed' if the metabolite is a reactant in the reaction,
+            'produced' if the metabolite is a product of the reaction,
+            'not involved' if the metabolite is neither a reactant nor a product of the reaction.
+        """
+        if reactions is None:
+            reactions = self.original_model.metabolites.get_by_id(met_id).reactions
+
+        involvement = {}
+        i = 0
+        for reaction in reactions:
+            involvement[reaction.id] = self.met_is_being_consumed_or_produced_at_reaction(met_id, reaction)
+            print('reaction', i, ': ', reaction.id,
+                  'is reversible: ', reaction.reversibility,
+                  'and the lower bound is: ', reaction.lower_bound,
+                  'and the upper bound is: ', reaction.upper_bound,
+                  'and the objective coefficient is: ', reaction.objective_coefficient)
+            i += 1
+
+        return involvement
+
+    def search_dead_end(self, metabolite_id, consumed=True, produced=True, verbose=False) -> tuple:
+        """
+        This method searches for reactions in the universal model where a given metabolite is consumed or produced.
+
+        Parameters
+        ----------
+        verbose: bool, optional
+            If True, the method will print the reactions where the metabolite is consumed or produced.
+        metabolite_id: str
+            The ID of the metabolite.
+        consumed: bool, optional
+            If True, the method will search for reactions where the metabolite is consumed.
+        produced: bool, optional
+            If True, the method will search for reactions where the metabolite is produced.
+
+        Returns
+        -------
+        tuple
+            A tuple containing two lists:
+            - The first list contains reactions where the metabolite is consumed.
+            - The second list contains reactions where the metabolite is produced.
+        """
+        # Get the metabolite object from the model
+        metabolite = self.universal_model_compartmentalized.metabolites.get_by_id(metabolite_id)
+
+        # Initialize lists to store reactions where the metabolite is consumed or produced
+        consumed_reactions = []
+        produced_reactions = []
+
+        # Iterate over all reactions in the model
+        for reaction in self.universal_model_compartmentalized.reactions:
+            # Check if the metabolite is a reactant in the reaction
+            if metabolite in reaction.reactants and consumed:
+                consumed_reactions.append(reaction)
+            # Check if the metabolite is a product in the reaction
+            if metabolite in reaction.products and produced:
+                produced_reactions.append(reaction)
+
+        if verbose:
+            if consumed:
+                print(f"Reactions where {metabolite_id} is consumed:")
+                for reaction in consumed_reactions:
+                    print(reaction.id)
+            if produced:
+                print(f"Reactions where {metabolite_id} is produced:")
+                for reaction in produced_reactions:
+                    print(reaction.id)
+
+        return consumed_reactions, produced_reactions
+
+    def deal_dead_ends(self, dead_ends: list):
+        """
+        This method deals with dead-end metabolites by searching for reactions in the universal model where the dead-end metabolite is consumed or produced and then adding those reactions to the draft model.
+
+        Parameters
+        ----------
+        dead_ends: list
+            List of dead-end metabolite IDs.
+
+        Returns
+        -------
+        cobra.Model
+            The updated draft model with added reactions.
+        """
+
+        if dead_ends is None:
+            dead_ends = self.dead_ends
+            if dead_ends is None:
+                self.identify_dead_end_metabolites_with_bioiso(objective_function_id=self.objective_function_id)
+                dead_ends = self.dead_ends
+
+        # Copy the draft model
+        draft = self.original_model.copy()
+
+        # Iterate over dead ends
+        for dead in dead_ends:
+            # Reset flags
+            flag_consumed = False
+            flag_produced = False
+
+            # Initialize lists to store reactions where the dead end is consumed or produced
+            consumed_uni = []
+            produced_uni = []
+
+            # Find reactions associated with dead ends in the draft model
+            reactions_dead_end = draft.metabolites.get_by_id(dead).reactions
+
+            # Check if dead end is being produced or consumed
+            for reaction in reactions_dead_end:
+                if self.met_is_being_consumed_or_produced_at_reaction(dead, reaction) == 'consumed':
+                    flag_consumed = True
+                elif self.met_is_being_consumed_or_produced_at_reaction(dead, reaction) == 'produced':
+                    flag_produced = True
+
+            # Find reactions in the universal model where the dead end is consumed or produced
+            if flag_consumed and flag_produced:
+                consumed_uni, produced_uni = self.search_dead_end(dead, consumed=True, produced=True)
+            elif flag_consumed:
+                consumed_uni, produced_uni = self.search_dead_end(dead, consumed=False, produced=True)
+            elif flag_produced:
+                consumed_uni, produced_uni = self.search_dead_end(dead, consumed=True, produced=False)
+
+            # Add reactions from the universal model to the draft model
+            for reaction in consumed_uni + produced_uni:
+                # Create a copy of the reaction
+                reaction_copy = reaction.copy()
+
+                # Check if the metabolite is in different compartments
+                if dead.split('__')[-1] not in [met.id.split('__')[-1] for met in reaction_copy.metabolites]:
+
+                    # Create a new transport reaction
+                    transport_reaction = Reaction(id=f"transport_{dead}")
+                    transport_reaction.name = f"Transport of {dead}"
+                    transport_reaction.lower_bound = -1000
+                    transport_reaction.upper_bound = 1000
+
+                    # Create two metabolite objects for each compartment
+                    met1 = Metabolite(id=f"{dead}_1", compartment=list(reaction_copy.compartments)[0])
+                    met2 = Metabolite(id=f"{dead}_2", compartment=list(reaction_copy.compartments)[1])
+
+                    # Add the metabolites to the transport reaction
+                    transport_reaction.add_metabolites({met1: -1, met2: 1})
+
+                    # Add the transport reaction to the draft model
+                    draft.add_reactions([transport_reaction])
+
+                # Add the reaction to the draft model
+                draft.add_reactions([reaction_copy])
+
+        return draft
