@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import time
 from functools import partial
@@ -964,9 +963,10 @@ class GapFiller:
                 if extr_id in compartments:
                     compartments.remove(extr_id)
 
-        # Check if there are at least two compartments to create a transport reaction
+            # Check if there are at least two compartments to create a transport reaction
         if len(compartments) < 2:
-            raise ValueError("There must be at least two compartments to create a transport reaction.")
+            print("Warning: There must be at least two compartments to create a transport reaction.")
+            return  # Exit the function early
 
         for dead in dead_ends:
             for i in range(len(compartments)):  # for each compartment
