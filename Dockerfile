@@ -1,31 +1,16 @@
-FROM rcarmo/ubuntu-python
+# Use the official Python image as the base image
+FROM python:3.9
 
-USER root
+# Set the working directory inside the container
+WORKDIR /app
 
-#update linux and accessories
-RUN apt-get -y update
-RUN apt-get -y upgrade
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-#get pip
-RUN apt-get install -y python-dev build-essential
-#RUN apt-get install python3-pip
+# Copy the entire content of your Python project into the container's working directory
+COPY . .
 
-COPY requirements.txt ./home
-RUN pip3 install --upgrade pip
-RUN pip3 install -r /home/requirements.txt
-ENV PYTHONPATH "/home:${PYTHONPATH}"
+# Command to run your Python service
+CMD ["python", "service_main.py"]
 
-CMD mkdir /home/sharing_point
-CMD mkdir /menecopy
-
-ADD tests/run_bioiso_and_meneco.py /home/
-ADD src/gap_filling_dl/biomeneco/BioISO/menecopy /home/menecopy
-ADD tests/data/models /home/models
-
-
-WORKDIR home
-
-
-
-#CMD ["python","cplex/python/setup.py","install"]
-CMD ["python","run_bioiso_and_meneco.py"]

@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import time
 from functools import partial
@@ -208,7 +207,7 @@ class GapFiller:
             print(f"Checking file: {file_path}")
 
             if file.endswith(".xml"):
-                if "model" in file and "universal" not in file and "seeds" not in file and "targets" not in file and\
+                if "model" in file and "universal" not in file and "seeds" not in file and "targets" not in file and \
                         'compartimentalized' not in file and 'temporary' not in file:
                     model_file = file
                 if "seeds" in file:
@@ -233,7 +232,6 @@ class GapFiller:
         print(f"targets_file: {targets_file}")
         print(f"universal_model_file: {universal_model_file}")
 
-
         # assure that all files are found and raise an error if not
         if not model_file:
             raise FileNotFoundError("No model file found in folder.")
@@ -256,6 +254,9 @@ class GapFiller:
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
         gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
         # gap_filler.universal_model_path = os.path.join(folder_path, 'universal_model_compartmentalized.xml')   # to remove, just for debugging
+
+        # add_transport_reaction_for_dead_ends for the original model, the tr are added to the original model
+        gap_filler.add_transport_reaction_for_dead_ends(exclude_extr=True, compartments=compartments, verbose=False)
 
         # Here we check the flag to determine whether to clone the model or not
         # if compartmentalized_file_path and clone:
@@ -949,16 +950,15 @@ class GapFiller:
 
                 # Check if the metabolite is in different compartments
                 if dead.split('__')[-1] not in [met.id.split('__')[-1] for met in reaction_copy.metabolites]:
-
                     # Create a new transport reaction
                     transport_reaction = Reaction(id=f"transport_{dead}")
                     transport_reaction.name = f"Transport of {dead}"
                     transport_reaction.lower_bound = -1000
                     transport_reaction.upper_bound = 1000
 
-                    # Create two metabolite objects for each compartment
-                    met1 = Metabolite(id=f"{dead}_1", compartment=list(reaction_copy.compartments)[0])
-                    met2 = Metabolite(id=f"{dead}_2", compartment=list(reaction_copy.compartments)[1])
+                    # Create two metabolite objects for each compartment # review here
+                    met1 = Metabolite(id=f"{dead}", compartment=list(reaction_copy.compartments)[0])
+                    met2 = Metabolite(id=f"{dead}", compartment=list(reaction_copy.compartments)[1])
 
                     # Add the metabolites to the transport reaction
                     transport_reaction.add_metabolites({met1: -1, met2: 1})
@@ -970,3 +970,62 @@ class GapFiller:
                 draft.add_reactions([reaction_copy])
 
         return draft
+
+    def add_transport_reaction_for_dead_ends(self, compartments: list = None, exclude_extr: bool = False,
+                                             verbose: bool = False,
+                                             **kwargs):
+
+        if self.dead_ends is None:
+            self.identify_dead_end_metabolites_with_bioiso(objective_function_id=self.objective_function_id, **kwargs)
+            dead_ends = self.dead_ends
+        else:
+            dead_ends = self.dead_ends
+
+        if compartments is None:
+            compartments = get_compartments_in_model(self.original_model)
+
+        # exclude extracellular compartment from the compartments list
+        if exclude_extr:
+            for extr_id in ['extr', 'e', 'extracellular']:
+                if extr_id in compartments:
+                    compartments.remove(extr_id)
+
+            # Check if there are at least two compartments to create a transport reaction
+        if len(compartments) < 2:
+            print("Warning: There must be at least two compartments to create a transport reaction.")
+            return  # Exit the function early
+
+        for dead in dead_ends:
+            for i in range(len(compartments)):  # for each compartment
+                for j in range(len(compartments)):  # for each compartment, including the current one
+                    if i != j:  # ensure we're not creating a transport reaction within the same compartment
+
+                        # Create a new transport reaction
+                        transport_reaction = Reaction(id=f"transport_{dead}_{compartments[i]}_to_{compartments[j]}")
+                        transport_reaction.name = f"Transport of {dead} from {compartments[i]} to {compartments[j]}"
+                        transport_reaction.lower_bound = -1000
+                        transport_reaction.upper_bound = 1000
+
+                        # Create two metabolite objects for the first two compartments
+                        met1 = Metabolite(id=f"{dead}", compartment=compartments[i])
+                        met2 = Metabolite(id=f"{dead}", compartment=compartments[j])
+
+                        # Add the metabolites to the transport reaction
+                        transport_reaction.add_metabolites({met1: -1, met2: 1})
+
+                        # Add the transport reaction to the original model
+                        self.original_model.add_reactions([transport_reaction])
+
+                        if verbose:
+                            if transport_reaction in self.original_model.reactions:
+                                print(f"Transport reaction for {dead} added to the model.")
+                            else:
+                                print(f"Transport reaction for {dead} not added to the model.")
+
+
+
+
+
+
+
+
