@@ -256,20 +256,19 @@ class GapFiller:
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
         gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
         # gap_filler.universal_model_path = os.path.join(folder_path, 'universal_model_compartmentalized.xml')   # to remove, just for debugging
-        if temporary_universal_model and gap_filler.temporary_universal_model is None:
 
         # Here we check the flag to determine whether to clone the model or not
-        if compartmentalized_file_path and clone:
-            gap_filler.universal_model_compartmentalized = cobra.io.read_sbml_model(compartmentalized_file_path)
-        if not found_compartmentalized and clone:
-            gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
+        # if compartmentalized_file_path and clone:
+        #     gap_filler.universal_model_compartmentalized = cobra.io.read_sbml_model(compartmentalized_file_path)
+        # if not found_compartmentalized and clone:
+        #     gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
 
         # print if the cloned_model is being used
         if hasattr(gap_filler,
                    'universal_model_compartmentalized') and gap_filler.universal_model_compartmentalized is not None:
             print("Cloned model is being used.")
 
-        if temporary_universal_model and not hasattr(gap_filler, 'temporary_universal_model'):
+        if temporary_universal_model:
             if not objective_function_id:
                 raise ValueError(
                     "Objective function ID must be specified for the creation of a temporary universal model.")
