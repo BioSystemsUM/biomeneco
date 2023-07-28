@@ -21,6 +21,7 @@ def write_metabolites_to_sbml(file_name: str, save_path: str, metabolites: List[
 
     model = cobra.Model()
     metabolite_cobra_metabolite_objects = []
+    metabolites = set(metabolites)
     for metabolite_id, compartment in metabolites:
         metabolite = Metabolite(id=metabolite_id, compartment=compartment)
         metabolite_cobra_metabolite_objects.append(metabolite)
