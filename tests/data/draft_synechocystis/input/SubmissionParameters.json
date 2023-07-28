@@ -1,0 +1,10 @@
+{
+  "objective_function_id": "e_Biomass__cytop",
+  "sinks": [
+    "C00002__cytop",
+    "C00004__cytop"
+  ],
+  "compartments": [
+    "cytop"
+  ]
+}

@@ -1,0 +1,380 @@
+Gap-filling report for model.xml
+Seeds file: model_seeds.xml
+Targets file: model_targets.xml
+Universal model file: temporary_universal_model.xml
+Execution Time: 818.96 seconds
+This report is based on the minimal completion of the draft network, which is faster. (This is not the optimized solution.)
+--- Comparison of Reactions ---
+Added reactions from the gap-filling: 45
+- ('R_R01053__cytop', 'repairnet')
+- ('R_R00161__cytop', 'repairnet')
+- ('R_R02734__cytop', 'repairnet')
+- ('R_R12026__cytop', 'repairnet')
+- ('R_R03222__cytop', 'repairnet')
+- ('R_R00550__cytop', 'repairnet')
+- ('R_R03458__cytop', 'repairnet')
+- ('R_R00667__cytop', 'repairnet')
+- ('R_R01728__cytop', 'repairnet')
+- ('R_R03165__cytop', 'repairnet')
+- ('R_R01826__cytop', 'repairnet')
+- ('R_R00479__cytop', 'repairnet')
+- ('R_R11636__cytop', 'repairnet')
+- ('R_R00919__cytop', 'repairnet')
+- ('R_R04509__cytop', 'repairnet')
+- ('R_R01213__cytop', 'repairnet')
+- ('R_R10711__cytop', 'repairnet')
+- ('R_R00489__cytop', 'repairnet')
+- ('R_R01867__cytop', 'repairnet')
+- ('R_R04365__cytop', 'repairnet')
+- ('R_R10686__cytop', 'repairnet')
+- ('R_R07280__cytop', 'repairnet')
+- ('R_R08553__cytop', 'repairnet')
+- ('R_R06974__cytop', 'repairnet')
+- ('R_R03459__cytop', 'repairnet')
+- ('R_R01130__cytop', 'repairnet')
+- ('R_R00590__cytop', 'repairnet')
+- ('R_R00425__cytop', 'repairnet')
+- ('R_R00914__cytop', 'repairnet')
+- ('R_R04475__cytop', 'repairnet')
+- ('R_R01777__cytop', 'repairnet')
+- ('R_R00578__cytop', 'repairnet')
+- ('R_R01373__cytop', 'repairnet')
+- ('R_R10146__cytop', 'repairnet')
+- ('R_R01288__cytop', 'repairnet')
+- ('R_R00310__cytop', 'repairnet')
+- ('R_R03046__cytop', 'repairnet')
+- ('R_R00751__cytop', 'repairnet')
+- ('R_R02135__cytop', 'repairnet')
+- ('R_R00181__cytop', 'repairnet')
+- ('R_R10404__cytop', 'repairnet')
+- ('R_R00400__cytop', 'repairnet')
+- ('R_R03652__cytop', 'repairnet')
+- ('R_R07281__cytop', 'repairnet')
+- ('R_R00451__cytop', 'repairnet')
+
+
+Reaction: R01053__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00161__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R02734__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R12026__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R03222__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00550__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R03458__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00667__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01728__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R03165__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01826__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00479__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R11636__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00919__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R04509__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01213__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 10000.0
+Genes: WP_010873307_1
+
+
+Reaction: R10711__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00489__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01867__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R04365__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R10686__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R07280__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R08553__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R06974__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R03459__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01130__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00590__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00425__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00914__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R04475__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01777__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00578__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01373__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R10146__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R01288__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00310__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R03046__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00751__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R02135__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 10000.0
+Genes: WP_020861916_1, WP_010871584_1, WP_010871667_1
+
+
+Reaction: R00181__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R10404__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00400__cytop
+Flux: 0.0
+Lower bound: -1000.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R03652__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R07281__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+
+
+Reaction: R00451__cytop
+Flux: 0.0
+Lower bound: 0.0
+Upper bound: 1000.0
+Genes: 
+Fluxes: TZ2900076_CYTMEM__cytmem    0.0
+R00529__cytop               0.0
+TR0000030_CYTMEM__cytmem    0.0
+R03920__cytop               0.0
+R03321__cytop               0.0
+                           ... 
+R10404__cytop               0.0
+R00400__cytop               0.0
+R03652__cytop               0.0
+R07281__cytop               0.0
+R00451__cytop               0.0
+Name: fluxes, Length: 1498, dtype: float64

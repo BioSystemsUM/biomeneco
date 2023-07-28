@@ -13,14 +13,15 @@ RUN pip3 install Flask
 RUN pip3 install --no-cache-dir -r /home/requirements.txt
 RUN git clone https://github.com/BioSystemsUM/BioISO.git && cd BioISO && python3 setup.py install
 
+
+RUN wget -P /home/utilities https://nextcloud.bio.di.uminho.pt/s/wnC3a687Px9JAPY
+
 RUN sh /home/utilities/cplex_studio2210.linux_x86_64.bin -f /home/utilities/cplex_response.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/home/src/"
 
 # Set the working directory inside the container
 WORKDIR /workdir
-
-
 
 EXPOSE 80
 
