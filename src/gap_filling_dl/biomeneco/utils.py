@@ -1,10 +1,5 @@
-from copy import deepcopy
-
 import cobra
 from cobra.flux_analysis import flux_variability_analysis
-
-from gap_filling_dl.my_classes import Model
-
 from bioservices import KEGG
 from typing import Dict
 
@@ -28,7 +23,7 @@ def get_metabolite_pathway_map(model):
     return metabolite_pathway_map
 
 
-def get_reaction_pathway_map(model: Model) -> Model:
+def get_reaction_pathway_map(model):
     """
     Get a map of reaction IDs to their associated pathways.
     Returns a dictionary where the keys are reaction IDs and the values are lists of pathways.
@@ -95,15 +90,8 @@ def get_compartments_in_model(model: cobra.Model) -> list:
     -------
 
     """
-    compartments = set()
-    for reaction in model.reactions:
-        compartment = reaction.id.split('_')[-1]
-        compartments.add(compartment)
 
-    # convert to list
-    compartments = list(compartments)
-
-    return compartments
+    return [e.lstrip("C_") for e in model.compartments.keys()]
 
 
 def identify_dead_end_metabolites(model: cobra.Model) -> list:
@@ -134,4 +122,3 @@ def identify_dead_end_metabolites(model: cobra.Model) -> list:
     print(f"Number of dead-end metabolites found: {len(dead_ends)}")
 
     return dead_ends
-

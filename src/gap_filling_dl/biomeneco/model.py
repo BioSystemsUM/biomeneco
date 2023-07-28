@@ -1,20 +1,21 @@
 import os
 import random
 import shutil
-import tempfile
 from copy import deepcopy
-from typing import Tuple, List, Iterable
+from typing import Tuple, List
+
 import cobra
 from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
 
-from gap_filling_dl.biomeneco.utils import get_metabolite_pathway_map, get_reaction_pathway_map
-from src.gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
+from .utils import get_metabolite_pathway_map, get_reaction_pathway_map
+from write_sbml import write_metabolites_to_sbml
 
 
 class Model(cobra.Model):
     def __init__(self, model: cobra.Model = None, objective_function_id=None, *args, **kwargs):
+        self.precursors_reactions = None
         self.reaction_pathway_map = get_reaction_pathway_map(model)
         self.metabolite_pathway_map = get_metabolite_pathway_map(model)
         self.objective_function_id = objective_function_id
@@ -286,12 +287,13 @@ class Model(cobra.Model):
 
     def get_pre_precursors(self):
 
-        ''' This function returns the precursors of the biomass precursors
-        retrieved earlier in the get_bio_precursors() function'''
+        """ This function returns the precursors of the biomass precursors
+        retrieved earlier in the get_bio_precursors() function"""
         try:
             self.pre_precursors = {}
             self.precursors_reactions = {}
-            if self.bio_precursors == None: self.get_bio_precursors()
+            if self.bio_precursors is None:
+                self.get_bio_precursors()
             for precursor in self.bio_precursors:
                 reactions = precursor.reactions
                 if len(reactions) > 2:
@@ -300,7 +302,8 @@ class Model(cobra.Model):
                 else:
                     reaction = Reaction()
                     for r in reactions:
-                        if r.id != self.objective_function_id: reaction = r
+                        if r.id != self.objective_function_id:
+                            reaction = r
                     if reaction.id:
                         self.pre_precursors[precursor.id] = self.get_reactants(reaction.id)
                         self.precursors_reactions[precursor.name] = (reaction.id, precursor.id)
@@ -311,13 +314,14 @@ class Model(cobra.Model):
     def get_reaction(self, reaction):
         try:
             return self.reactions.get_by_id(reaction)
-        except:
+        except Exception as e:
+            print(e)
             print(reaction + " not found")
 
     def get_products(self, reaction):
         return self.get_reaction(reaction).products
 
-    def create_tRNAs_reactions(self, protein_id="e-Protein"):
+    def create_trnas_reactions(self, protein_id="e-Protein"):
         """
         This function creates the tRNA reactions for the protein synthesis
         """
@@ -336,7 +340,7 @@ class Model(cobra.Model):
 
     def create_demand(self, metabolite_id):
 
-        ''' This function creates a demand reaction'''
+        """ This function creates a demand reaction"""
 
         reaction_name = "DM_" + metabolite_id
         self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
@@ -345,7 +349,7 @@ class Model(cobra.Model):
 
     def create_sink(self, metabolite_id, bounds=(-10000, 10000)):
 
-        ''' This function creates a sink reaction '''
+        """ This function creates a sink reaction """
 
         reaction_name = "Sk_" + metabolite_id
         self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
