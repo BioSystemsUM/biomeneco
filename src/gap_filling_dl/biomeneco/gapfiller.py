@@ -4,7 +4,6 @@ import shutil
 import time
 from functools import partial
 from os.path import join
-from typing import List
 
 import cobra
 from bioiso import BioISO, set_solver
@@ -18,12 +17,16 @@ from meneco.meneco import sbml
 import copy
 
 from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
+
 from .model import Model
 from .utils import get_compartments_in_model
 from .utils import identify_dead_end_metabolites
 from parallelbar import progress_imap
+from typing import List
 
 UTILITIES_PATH = "/home/utilities"
+
+
 # UTILITIES_PATH= r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\utilities"
 
 
@@ -48,6 +51,9 @@ class GapFiller:
         universal_model_path
         results_path
         """
+        self.never_producible = None
+        self.reconstructable_targets = None
+        self.unproducible = None
         self.resultsPath = results_path
         self.universal_model_copy = None
         self.universal_model_compartmentalized = None
@@ -119,8 +125,7 @@ class GapFiller:
     def original_model(self, value):
         self._original_model = value
 
-    def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None,
-            objective_function_id=None, **kwargs):
+    def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None, **kwargs):
         """
         Run the gap-filling algorithm.
 
@@ -155,33 +160,41 @@ class GapFiller:
             print("Getting minimal completion...")
             # Call the get_minimal_completion_size function this order: draftnet, repairnet, seeds, targets)
             from meneco.meneco import query
+            # Generate the unproducible, unreconstructable, and reconstructable targets.
             model = query.get_unproducible(draftnet, targets, seeds)
             unproducible = set([a[0] for pred in model if pred == 'unproducible_target' for a in model[pred]])
-            print('{0} unproducible targets:\n\t{1}\n'.format(len(unproducible), '\n\t'.join(unproducible)))
-            repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repairnet')
+            print(f'Unproducible targets ({len(unproducible)}):\n', '\n'.join(unproducible))
+            self.unproducible = unproducible
 
+            repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repairnet')
             combinet = draftnet
             combinet = TermSet(combinet.union(repairnet))
-
             model = query.get_unproducible(combinet, targets, seeds)
             never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
-            print('{0} unreconstructable targets:\n\t{1}\n'.format(len(never_producible), '\n\t'.join(never_producible)))
+            print(f'Unreconstructable targets ({len(never_producible)}):\n', '\n'.join(never_producible))
+            self.never_producible = never_producible
 
             reconstructable_targets = set(list(unproducible.difference(never_producible)))
-            print('{0} reconstructable targets:\n\t{1}\n'.format(len(reconstructable_targets), '\n\t'.join(reconstructable_targets)))
+            print(f'Reconstructable targets ({len(reconstructable_targets)}):\n', '\n'.join(reconstructable_targets))
+            self.reconstructable_targets = reconstructable_targets
+
             targets = TermSet(Atom('target("' + t + '")') for t in reconstructable_targets)
             self.minimal_completion = get_minimal_completion_size(draftnet, repairnet, seeds, targets)
+
+            # End timing the process
             time_end = time.time()
             self.gftime = time_end - time_start
+
+            # 4. Call the report method to generate the JSON and text reports.
+            self.report(removed_reactions=removed_reactions, write_to_file=write_to_file)
 
             self.minimal_set = set(
                 atom[0] for pred in self.minimal_completion if pred == 'xreaction'
                 for atom in self.minimal_completion[pred])
 
-            print("Time taken: ", self.gftime)
+            # 5. Any other post-processing or cleanup operations.
 
-        return self.report(write_to_file=write_to_file, removed_reactions=removed_reactions,
-                           objective_function_id=objective_function_id)
+            return
 
     def run_meneco(self, enumeration: bool, json_output: bool) -> dict:
         """
@@ -206,7 +219,8 @@ class GapFiller:
         return self.results_meneco
 
     @classmethod
-    def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False, objective_function_id: str = None,
+    def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False,
+                    objective_function_id: str = None,
                     compartments=None):
         """
         Create a Gapfilling object from a folder containing the model, seeds, targets and universal model.
@@ -268,7 +282,8 @@ class GapFiller:
         original_model.create_trnas_reactions()
 
         # Create the GapFiller object with the original model
-        gap_filler = cls(model_path=model_path, results_path=results_path, universal_model_path=os.path.join(folder_path, universal_model_file))
+        gap_filler = cls(model_path=model_path, results_path=results_path,
+                         universal_model_path=os.path.join(folder_path, universal_model_file))
         gap_filler.original_model = original_model
 
         gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
@@ -294,13 +309,14 @@ class GapFiller:
                 gap_filler.universal_model_path = os.path.join(folder_path, 'temporary_universal_model.xml')
                 print('Temporary universal model file path:', gap_filler.universal_model_path)
 
-                gap_filler.temporary_universal_model = cobra.io.read_sbml_model(os.path.join(folder_path, 'temporary_universal_model.xml'))
+                gap_filler.temporary_universal_model = cobra.io.read_sbml_model(
+                    os.path.join(folder_path, 'temporary_universal_model.xml'))
                 gap_filler.universal_model = gap_filler.temporary_universal_model
             else:
                 raise FileNotFoundError("Temporary universal model file not found.")
         return gap_filler
 
-    def add_reactions_to_model(self, model, reactions: list[str]):
+    def add_reactions_to_model(self, model, reactions: List[str]):
         """
         Add reactions to a model and run the cobra gap-filling algorithm.
 
@@ -326,100 +342,37 @@ class GapFiller:
 
         return model
 
-    def report(self, write_to_file=False, removed_reactions: list = None, objective_function_id: str = None):
-
+    def report(self, removed_reactions=None, write_to_file=True):
         if self.filled_model is None:
             self.filled_model = copy.deepcopy(self.original_model)
 
-        # Include the file names used in the gapfilling without the full path
-        report = 'Gap-filling report for {}\n'.format(os.path.basename(self.model_path))
-        report += 'Seeds file: {}\n'.format(os.path.basename(self.seeds_path))
-        report += 'Targets file: {}\n'.format(os.path.basename(self.targets_path))
-        report += 'Universal model file: {}\n'.format(os.path.basename(self.universal_model_path))
+        # Using already populated target sets from the run method
+        unproducible = list(self.unproducible) if self.unproducible else []
+        unreconstructable = list(self.never_producible) if self.never_producible else []
+        reconstructable = list(self.reconstructable_targets) if self.reconstructable_targets else []
 
-        if self.gftime is not None:
-            report += "Execution Time: {:.2f} seconds\n".format(self.gftime)
+        report_dict = {
+            'title': 'Gap-filling report',
+            'files_used': {
+                'model': os.path.basename(self.model_path),
+                'seeds': os.path.basename(self.seeds_path),
+                'targets': os.path.basename(self.targets_path),
+                'universal_model': os.path.basename(self.universal_model_path)
+            },
+            'execution_time': self.gftime if hasattr(self, 'gftime') else None,
+            'added_reactions': [],  # This can be populated if there's a way to track added reactions
+            'artificial_removed_reactions': removed_reactions if removed_reactions else [],
+            'unproducible_targets': unproducible,
+            'unreconstructable_targets': unreconstructable,
+            'reconstructable_targets': reconstructable
+            # ... you can extend this structure as needed
+        }
 
-        if self.minimal_completion is not None and len(self.minimal_completion) > 0:
-            report += 'This report is based on the minimal completion of the draft network, which is faster. ' \
-                      '(This is not the optimized solution.)\n'
-
-            # define the objective function of the model
-            if objective_function_id is not None:
-                self.filled_model.objective = objective_function_id
-
-            unique_reactions = set(self.minimal_completion['xreaction'])
-
-            # Report the reactions comparison results
-            report += '--- Comparison of Reactions ---\n'
-
-            report += 'Added reactions from the gap-filling: {}\n'.format(len(unique_reactions))
-
-            for r in unique_reactions:
-                # add the reaction to the model
-
-                report += '- {}\n'.format(r)
-                self.filled_model = self.add_reactions_to_model(self.filled_model, [r])
-                # print the reaction added
-
-                # verify if the reaction is in the model
-                if r in self.filled_model.reactions:
-                    print('Added reaction: {}'.format(r[0]))
-
-                    # for r in self.minimal_completion['xreaction']:
-            #     # add the reaction to the model
-            #     self.add_reactions_to_model(self.filled_model, [r])
-            #     # print the reaction added
-            #     print('Added reaction: {}'.format(r))
-
-            solution = self.filled_model.optimize()
-
-            for r in self.minimal_completion['xreaction']:
-                # Remove the 'R_' prefix from the reaction ID
-                r_id = r[0].replace('R_', '', 1)
-
-                # get information regarding the reaction added, id, name, lower bound, upper bound, genes and add it
-                report += f"\n\nReaction: {r_id}\n"
-                report += f"Flux: {solution.fluxes[r_id]}\n"  # Use the solution to access the flux
-                report += f"Lower bound: {self.filled_model.reactions.get_by_id(r_id).lower_bound}\n"
-                report += f"Upper bound: {self.filled_model.reactions.get_by_id(r_id).upper_bound}\n"
-                report += f"Genes: {', '.join([gene.id for gene in self.filled_model.reactions.get_by_id(r_id).genes])}\n"
-
-            # print the fluxes of the reactions
-            report += f"Fluxes: {solution.fluxes}\n"
-
-        else:
-            report += 'No reactions added from the minimal_completion method of meneco.'
-
-        if removed_reactions is not None:
-            report += "Previously removed reactions:\n"
-            report += "\n".join(removed_reactions)
-
-            # use Cobra package to see fluxes etc of the model
-            for reaction in removed_reactions:
-                # add reactions to the model
-                self.filled_model.add_reactions([self.universal_model.reactions.get_by_id(reaction)])
-
-                # universal_model.reactions.get_by_id('
-
-                report += f"{self.filled_model.reactions.get_by_id(reaction)}\n"
-                report += f"Flux: {self.filled_model.reactions.get_by_id(reaction).flux}\n"
-                report += f"Lower bound: {self.filled_model.reactions.get_by_id(reaction).lower_bound}\n"
-                report += f"Upper bound: {self.filled_model.reactions.get_by_id(reaction).upper_bound}\n"
-                report += f"Genes: {', '.join([gene.id for gene in self.filled_model.reactions.get_by_id(reaction).genes])}\n"
-
+        # Save the report in JSON format
         if write_to_file:
-            # file_name = report_ + basename.txt
-            file_name = os.path.join(self.resultsPath,
-                                     "report.txt")
-            # check if file exists
-            if os.path.isfile(file_name):
-                print(f"Warning: {file_name} already exists and will be overwritten.")
-            with open(file_name, 'w') as f:
-                f.write(report)
-            print("Report written to {}".format(file_name))
-
-        return report
+            json_report_path = os.path.join(self.resultsPath, "gapfilling_report.json")
+            with open(json_report_path, 'w') as json_file:
+                json.dump(report_dict, json_file, indent=4)
 
     def check_reactions(self, reactions: list):
         """
@@ -995,7 +948,8 @@ class GapFiller:
         -------
 
         """
-        pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites', 'Microbial metabolism in diverse environments',
+        pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites',
+                              'Microbial metabolism in diverse environments',
                               'Biosynthesis of cofactors', 'Carbon metabolism', 'Fatty acid metabolism'}
         pathways_to_keep = []
         metabolite_pathways_map = {}
@@ -1007,13 +961,18 @@ class GapFiller:
         for target in targets.metabolites:
             if target.id in universal_model.metabolite_pathway_map.keys():
                 if '__'.join(target.id.split("__")[:-1]) in cofactors.keys():
-                    pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
-                    metabolite_pathways_map[target.id] = set(pathway for pathway in universal_model.metabolite_pathway_map[target.id] if pathway in cofactors['__'.join(target.id.split("__")[:-1])])
+                    pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
+                                         pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
+                    metabolite_pathways_map[target.id] = set(
+                        pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
+                        pathway in cofactors['__'.join(target.id.split("__")[:-1])])
                 else:
                     pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id]]
-                    metabolite_pathways_map[target.id] = set(pathway for pathway in universal_model.metabolite_pathway_map[target.id])
+                    metabolite_pathways_map[target.id] = set(
+                        pathway for pathway in universal_model.metabolite_pathway_map[target.id])
         pathways_to_keep = set(pathways_to_keep) - pathways_to_ignore
-        metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
+        metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in
+                                   metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
         if related_pathways:
             related_pathways = set()
             if os.path.exists(os.path.join(utilities_path, 'related_pathways_map.json')):
