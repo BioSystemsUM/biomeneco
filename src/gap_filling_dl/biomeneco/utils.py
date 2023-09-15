@@ -3,6 +3,13 @@ from cobra.flux_analysis import flux_variability_analysis
 from bioservices import KEGG
 from typing import Dict
 
+def edit_metabolite_id(metabolite_id):
+    # if metabolite has this structure: 'C02205__C_in', it will be replaced by 'C02205__in', we need to remove the 'C_'
+    if 'C_' in metabolite_id:
+        metabolite_id = metabolite_id.replace('C_', '')
+    return metabolite_id
+
+
 
 def get_metabolite_pathway_map(model):
     """
@@ -10,6 +17,10 @@ def get_metabolite_pathway_map(model):
     Returns a dictionary where the keys are metabolite IDs and the values are lists of pathways.
     -------
     """
+    # edit the metabolite id
+    for metabolite in model.metabolites:
+        metabolite.id = edit_metabolite_id(metabolite.id)
+
     if not model.reaction_pathway_map:
         model.reaction_pathway_map = get_reaction_pathway_map(model)
     metabolite_pathway_map = {}
@@ -20,6 +31,12 @@ def get_metabolite_pathway_map(model):
                     if pathway not in metabolite_pathway_map.get(metabolite.id, []):
                         metabolite_pathway_map[metabolite.id] = metabolite_pathway_map.get(metabolite.id, []) + [
                             pathway]
+
+    # print if the metabolite is not in any pathway
+    for metabolite in model.metabolites:
+        if metabolite.id not in metabolite_pathway_map.keys():
+            print(f"Metabolite {metabolite.id} is not in any pathway")
+
     return metabolite_pathway_map
 
 

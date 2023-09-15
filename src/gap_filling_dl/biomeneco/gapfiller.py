@@ -240,6 +240,7 @@ class GapFiller:
         seeds_file = None
         targets_file = None
         universal_model_file = None
+        UTILITIES_PATH = '/Users/josediogomoura/gap_filling_dl/utilities'
 
         shutil.copy(join(UTILITIES_PATH, "universal_model.xml"), folder_path)
 
@@ -948,6 +949,7 @@ class GapFiller:
         -------
 
         """
+
         pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites',
                               'Microbial metabolism in diverse environments',
                               'Biosynthesis of cofactors', 'Carbon metabolism', 'Fatty acid metabolism'}
@@ -959,20 +961,30 @@ class GapFiller:
         targets = read_sbml_model(self.targets_path)
         cofactors = json.load(open(os.path.join(utilities_path, 'cofactors.json'), 'r'))
         for target in targets.metabolites:
+            print(target.id)
             if target.id in universal_model.metabolite_pathway_map.keys():
+                print('target.id is in universal_model.metabolite_pathway_map.keys()', target.id)
                 if '__'.join(target.id.split("__")[:-1]) in cofactors.keys():
                     pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
                                          pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
                     metabolite_pathways_map[target.id] = set(
                         pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
                         pathway in cofactors['__'.join(target.id.split("__")[:-1])])
+
+                    print('pathways_to_keep', pathways_to_keep)
+
                 else:
                     pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id]]
                     metabolite_pathways_map[target.id] = set(
                         pathway for pathway in universal_model.metabolite_pathway_map[target.id])
+
+                    print('pathways_to_keep', pathways_to_keep)
         pathways_to_keep = set(pathways_to_keep) - pathways_to_ignore
+        print('after the first loop, pathways_to_keep', pathways_to_keep)
         metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in
                                    metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
+
+
         if related_pathways:
             related_pathways = set()
             if os.path.exists(os.path.join(utilities_path, 'related_pathways_map.json')):

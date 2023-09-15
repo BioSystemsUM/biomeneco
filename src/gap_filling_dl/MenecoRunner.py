@@ -48,8 +48,10 @@ def read_model_and_run_gap_filling(processing_path, results_path):
 
 if __name__ == '__main__':
     # Call the function to run the commands
-    processingPath = sys.argv[1]
-    resultsPath = sys.argv[2]
+    #processingPath = sys.argv[1]
+    #resultsPath = sys.argv[2]
+    processingPath = '/Users/josediogomoura/gap_filling_dl/tests/data/model_spneumoniaeR6/model_4/input'
+    resultsPath = "/Users/josediogomoura/gap_filling_dl/tests/data/model_spneumoniaeR6/model_4/output"
     print("processingPath: ", processingPath)
     print("resultsPath: ", resultsPath)
     logPath = resultsPath + "/trace_errors.log"
