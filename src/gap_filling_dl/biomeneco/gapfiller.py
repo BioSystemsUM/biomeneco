@@ -181,16 +181,18 @@ class GapFiller:
             targets = TermSet(Atom('target("' + t + '")') for t in reconstructable_targets)
             self.minimal_completion = get_minimal_completion_size(draftnet, repairnet, seeds, targets)
 
+            self.report(removed_reactions=removed_reactions, write_to_file=write_to_file)
+
+            self.minimal_set = set(
+                atom[0] for pred in self.minimal_completion if pred == 'xreaction'
+                for atom in self.minimal_completion[pred])
+
             # End timing the process
             time_end = time.time()
             self.gftime = time_end - time_start
 
             # 4. Call the report method to generate the JSON and text reports.
             self.report(removed_reactions=removed_reactions, write_to_file=write_to_file)
-
-            self.minimal_set = set(
-                atom[0] for pred in self.minimal_completion if pred == 'xreaction'
-                for atom in self.minimal_completion[pred])
 
             # 5. Any other post-processing or cleanup operations.
 
@@ -351,6 +353,7 @@ class GapFiller:
         unproducible = list(self.unproducible) if self.unproducible else []
         unreconstructable = list(self.never_producible) if self.never_producible else []
         reconstructable = list(self.reconstructable_targets) if self.reconstructable_targets else []
+        minimal_completion = list(self.minimal_completion) if self.minimal_completion else []
 
         report_dict = {
             'title': 'Gap-filling report',
@@ -365,7 +368,9 @@ class GapFiller:
             'artificial_removed_reactions': removed_reactions if removed_reactions else [],
             'unproducible_targets': unproducible,
             'unreconstructable_targets': unreconstructable,
-            'reconstructable_targets': reconstructable
+            'reconstructable_targets': reconstructable,
+            'minimal_completion': minimal_completion
+
             # ... you can extend this structure as needed
         }
 
