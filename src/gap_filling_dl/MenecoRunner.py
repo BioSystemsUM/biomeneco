@@ -1,4 +1,5 @@
 import json
+import platform
 import shutil
 from logging.handlers import TimedRotatingFileHandler
 from os.path import join
@@ -48,10 +49,17 @@ def read_model_and_run_gap_filling(processing_path, results_path):
 
 if __name__ == '__main__':
     # Call the function to run the commands
-    #processingPath = sys.argv[1]
-    #resultsPath = sys.argv[2]
-    processingPath = '/Users/josediogomoura/gap_filling_dl/tests/data/model_spneumoniaeR6/model_4/input'
-    resultsPath = "/Users/josediogomoura/gap_filling_dl/tests/data/model_spneumoniaeR6/model_4/output"
+    #
+
+    if platform.system() == 'Linux':
+        processingPath = sys.argv[1]
+        # resultsPath = sys.argv[2]
+    elif platform.system() == 'Windows':
+        processingPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\lactis\input"
+        resultsPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\lactis\output"
+    else:
+        print('Running on another operating system')
+
     print("processingPath: ", processingPath)
     print("resultsPath: ", resultsPath)
     logPath = resultsPath + "/trace_errors.log"

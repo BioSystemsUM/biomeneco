@@ -11,6 +11,13 @@ def edit_metabolite_id(metabolite_id):
 
 
 
+def edit_metabolite_id(metabolite_id):
+    # if metabolite has this structure: 'C02205__C_in', it will be replaced by 'C02205__in', we need to remove the 'C_'
+    if 'C_' in metabolite_id:
+        metabolite_id = metabolite_id.replace('C_', '')
+    return metabolite_id
+
+
 def get_metabolite_pathway_map(model):
     """
     Get a map of metabolite IDs to their associated pathways.

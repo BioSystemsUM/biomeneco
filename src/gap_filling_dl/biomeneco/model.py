@@ -16,11 +16,21 @@ from write_sbml import write_metabolites_to_sbml
 class Model(cobra.Model):
     def __init__(self, model: cobra.Model = None, objective_function_id=None, *args, **kwargs):
         self.precursors_reactions = None
-        self.reaction_pathway_map = get_reaction_pathway_map(model)
-        self.metabolite_pathway_map = get_metabolite_pathway_map(model)
+        if model and model.reactions and model.groups:
+            self.reaction_pathway_map = get_reaction_pathway_map(model)
+        if model and model.metabolites and model.groups:
+            self.metabolite_pathway_map = get_metabolite_pathway_map(model)
+            self.pathway_metabolites_map = {}
+            for metabolite, pathways in self.metabolite_pathway_map.items():
+                for pathway in pathways:
+                    if pathway not in self.pathway_metabolites_map:
+                        self.pathway_metabolites_map[pathway] = []
+                    self.pathway_metabolites_map[pathway].append(metabolite)
         self.objective_function_id = objective_function_id
         self.pre_precursors = None
         self.bio_precursors = None
+        self._seeds = None
+        self._targets = None
         super().__init__(id_or_model=model, *args, **kwargs)
 
     @classmethod
@@ -46,7 +56,21 @@ class Model(cobra.Model):
             A list of tuples, where each tuple contains the ID and compartment of a seed metabolite.
             """
 
-        return self.identify_seeds()
+        return self._seeds
+
+    @seeds.setter
+    def seeds(self, seeds):
+        """
+        Set the seeds of a model.
+        Parameters
+        ----------
+        seeds
+
+        Returns
+        -------
+
+        """
+        self._seeds = seeds
 
     @property
     def targets(self) -> List[Tuple[str, str]]:
@@ -56,7 +80,21 @@ class Model(cobra.Model):
             A list of tuples, where each tuple contains the ID and compartment of a target metabolite.
             """
 
-        return self.identify_targets()
+        return self._targets
+
+    @targets.setter
+    def targets(self, targets):
+        """
+        Set the targets of a model.
+        Parameters
+        ----------
+        targets
+
+        Returns
+        -------
+
+        """
+        self._targets = targets
 
     # method to identify the seeds of a model
     def identify_seeds(self) -> List[Tuple[str, str]]:
@@ -74,8 +112,21 @@ class Model(cobra.Model):
                 if reactant.id not in total_seeds_ids and reaction.lower_bound < 0:
                     total_seeds.append((reactant.id, reactant.compartment))
                     total_seeds_ids.append(reactant.id)
-
+        self.seeds = total_seeds
         return total_seeds
+
+    def add_seeds(self, new_seeds):
+        """
+        Add new seeds to the model.
+        Parameters
+        ----------
+        new_seeds
+
+        Returns
+        -------
+
+        """
+        self.seeds.extend(new_seeds)
 
     def identify_targets(self,
                          objective: str = 'maximize', solver: str = 'cplex') -> List[Tuple[str, str]]:
@@ -133,7 +184,7 @@ class Model(cobra.Model):
 
                             if target_id not in targets:
                                 targets.append((target_id, compartment))
-
+        self.targets = targets
         return targets
 
     def to_sbml(self, file_name: str, save_path: str, seeds=True, targets=True):
@@ -297,8 +348,8 @@ class Model(cobra.Model):
             for precursor in self.bio_precursors:
                 reactions = precursor.reactions
                 if len(reactions) > 2:
-                    print("ATP or other metabolite. Without unique precursor")
                     self.pre_precursors[precursor.id] = []
+                    print(f"{precursor.id} is a product of more than one reaction")
                 else:
                     reaction = Reaction()
                     for r in reactions:

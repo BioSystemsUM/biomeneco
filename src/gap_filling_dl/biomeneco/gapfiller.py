@@ -1,33 +1,66 @@
+import itertools
 import json
 import os
 import shutil
 import time
 from functools import partial
-from os.path import join
-
+from os.path import join, dirname
 import cobra
 from bioiso import BioISO, set_solver
 from cobra import Reaction, Metabolite
 from clyngor.as_pyasp import TermSet, Atom
 from cobra.core import Group
 from cobra.io import write_sbml_model, read_sbml_model
+from meneco import query
 from meneco.query import get_minimal_completion_size
-from meneco.meneco import run_meneco
+from meneco.meneco import run_meneco, extract_xreactions
 from meneco.meneco import sbml
 import copy
 
-from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
+from parallelbar.parallelbar import ProgressBar, _update_error_bar
 
+from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
 from .model import Model
 from .utils import get_compartments_in_model
 from .utils import identify_dead_end_metabolites
 from parallelbar import progress_imap
 from typing import List
+import platform
+from write_sbml import write_metabolites_to_sbml
 
-UTILITIES_PATH = "/home/utilities"
+import parallelbar
+
+parallelbar.parallelbar.PROGRESS = "DONE"
+
+def _my_process_status(bar_size, worker_queue):
+    bar = ProgressBar(total=bar_size, desc=parallelbar.parallelbar.PROGRESS)
+    error_bar_parameters = dict(total=bar_size, position=1, desc='ERROR', colour='red')
+    error_bar = {}
+    error_bar_n = 0
+    while True:
+        flag, upd_value = worker_queue.get()
+        if flag is None:
+            if error_bar:
+                error_bar_n = error_bar['bar'].n
+                error_bar['bar'].close()
+            if bar.n < bar_size and upd_value != -1:
+                bar.update(bar_size - bar.n - error_bar_n)
+            bar.close()
+            break
+        if flag:
+            _update_error_bar(error_bar, error_bar_parameters)
+        else:
+            bar.update(upd_value)
+
+parallelbar.parallelbar._process_status = _my_process_status
 
 
-# UTILITIES_PATH= r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\utilities"
+if platform.system() == 'Linux':
+    UTILITIES_PATH = "/home/utilities"
+elif platform.system() == 'Windows':
+    UTILITIES_PATH = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\utilities"
+else:
+    print('Running on another operating system')
 
 
 def clone_metabolite(compartments, metabolites):
@@ -51,6 +84,7 @@ class GapFiller:
         universal_model_path
         results_path
         """
+        self.additional_seeds = set()
         self.never_producible = None
         self.reconstructable_targets = None
         self.unproducible = None
@@ -125,20 +159,21 @@ class GapFiller:
     def original_model(self, value):
         self._original_model = value
 
-    def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None, **kwargs):
+    def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None,
+            objective_function_id=None, **kwargs):
         """
         Run the gap-filling algorithm.
 
         Parameters
         ----------
         write_to_file
-        objective_function_id
         removed_reactions
         optimize
         kwargs:
             Keyword arguments to pass to the gap-filling algorithm.
 
         """
+        print("Running gap-filling algorithm...")
         if self.original_model is not None:
             write_sbml_model(self.original_model, self.model_path)
         else:
@@ -160,43 +195,44 @@ class GapFiller:
             print("Getting minimal completion...")
             # Call the get_minimal_completion_size function this order: draftnet, repairnet, seeds, targets)
             from meneco.meneco import query
-            # Generate the unproducible, unreconstructable, and reconstructable targets.
             model = query.get_unproducible(draftnet, targets, seeds)
             unproducible = set([a[0] for pred in model if pred == 'unproducible_target' for a in model[pred]])
             print(f'Unproducible targets ({len(unproducible)}):\n', '\n'.join(unproducible))
             self.unproducible = unproducible
 
             repairnet = sbml.readSBMLnetwork(self.universal_model_path, 'repairnet')
+
             combinet = draftnet
             combinet = TermSet(combinet.union(repairnet))
+
+            model = query.get_unproducible(combinet, targets, seeds)
+            self.never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+            print(f'Unreconstructable targets ({len(self.never_producible)}):\n', '\n'.join(self.never_producible))
+            print("Identifying additional seeds...")
+            if self.never_producible:
+                self.identify_additional_seeds(combinet, targets)
+
+            seeds = sbml.readSBMLseeds(self.seeds_path)
             model = query.get_unproducible(combinet, targets, seeds)
             never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
-            print(f'Unreconstructable targets ({len(never_producible)}):\n', '\n'.join(never_producible))
-            self.never_producible = never_producible
+            print(f'Unreconstructable targets after additional seeds ({len(never_producible)}):\n', '\n'.join(never_producible))
 
             reconstructable_targets = set(list(unproducible.difference(never_producible)))
             print(f'Reconstructable targets ({len(reconstructable_targets)}):\n', '\n'.join(reconstructable_targets))
             self.reconstructable_targets = reconstructable_targets
 
             targets = TermSet(Atom('target("' + t + '")') for t in reconstructable_targets)
-            self.minimal_completion = get_minimal_completion_size(draftnet, repairnet, seeds, targets)
-
-            self.report(removed_reactions=removed_reactions, write_to_file=write_to_file)
+            self.minimal_completion = extract_xreactions(get_minimal_completion_size(draftnet, repairnet, seeds, targets), False)
+            time_end = time.time()
+            self.gftime = time_end - time_start
 
             self.minimal_set = set(
                 atom[0] for pred in self.minimal_completion if pred == 'xreaction'
                 for atom in self.minimal_completion[pred])
 
-            # End timing the process
-            time_end = time.time()
-            self.gftime = time_end - time_start
+            print("Time taken: ", self.gftime)
 
-            # 4. Call the report method to generate the JSON and text reports.
-            self.report(removed_reactions=removed_reactions, write_to_file=write_to_file)
-
-            # 5. Any other post-processing or cleanup operations.
-
-            return
+        return self.report(write_to_file=write_to_file, removed_reactions=removed_reactions)
 
     def run_meneco(self, enumeration: bool, json_output: bool) -> dict:
         """
@@ -221,8 +257,7 @@ class GapFiller:
         return self.results_meneco
 
     @classmethod
-    def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False,
-                    objective_function_id: str = None,
+    def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False, objective_function_id: str = None,
                     compartments=None):
         """
         Create a Gapfilling object from a folder containing the model, seeds, targets and universal model.
@@ -242,7 +277,6 @@ class GapFiller:
         seeds_file = None
         targets_file = None
         universal_model_file = None
-        UTILITIES_PATH = '/Users/josediogomoura/gap_filling_dl/utilities'
 
         shutil.copy(join(UTILITIES_PATH, "universal_model.xml"), folder_path)
 
@@ -294,26 +328,23 @@ class GapFiller:
         gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
 
         # gap_filler.universal_model_path = os.path.join(folder_path, 'universal_model_compartmentalized.xml')   # to remove, just for debugging
+        # gap_filler.universal_model = Model(cobra.io.read_sbml_model(os.path.join(folder_path, 'universal_model_compartmentalized.xml')))
 
-        # add_transport_reaction_for_dead_ends for the original model, the tr are added to the original model
-        gap_filler.add_transport_reaction_for_dead_ends(exclude_extr=True, compartments=compartments, verbose=False)
-        if hasattr(gap_filler,
-                   'universal_model_compartmentalized') and gap_filler.universal_model_compartmentalized is not None:
-            print("Cloned model is being used.")
+        gap_filler.add_transport_reaction_for_dead_ends(exclude_extr=True, compartments=compartments)
 
         if temporary_universal_model:
             if not objective_function_id:
                 raise ValueError(
                     "Objective function ID must be specified for the creation of a temporary universal model.")
-            gap_filler.build_temporary_universal_model(folder_path, True, UTILITIES_PATH)
+            gap_filler.build_temporary_universal_model(folder_path, True)
 
             if os.path.isfile(os.path.join(folder_path, 'temporary_universal_model.xml')):
                 print('Temporary universal model file successfully created.')
                 gap_filler.universal_model_path = os.path.join(folder_path, 'temporary_universal_model.xml')
                 print('Temporary universal model file path:', gap_filler.universal_model_path)
 
-                gap_filler.temporary_universal_model = cobra.io.read_sbml_model(
-                    os.path.join(folder_path, 'temporary_universal_model.xml'))
+                gap_filler.temporary_universal_model = Model(cobra.io.read_sbml_model(
+                    os.path.join(folder_path, 'temporary_universal_model.xml')))
                 gap_filler.universal_model = gap_filler.temporary_universal_model
             else:
                 raise FileNotFoundError("Temporary universal model file not found.")
@@ -345,11 +376,11 @@ class GapFiller:
 
         return model
 
-    def report(self, removed_reactions=None, write_to_file=True):
+    def report(self, write_to_file=False, removed_reactions: list = None):
+
         if self.filled_model is None:
             self.filled_model = copy.deepcopy(self.original_model)
 
-        # Using already populated target sets from the run method
         unproducible = list(self.unproducible) if self.unproducible else []
         unreconstructable = list(self.never_producible) if self.never_producible else []
         reconstructable = list(self.reconstructable_targets) if self.reconstructable_targets else []
@@ -364,17 +395,14 @@ class GapFiller:
                 'universal_model': os.path.basename(self.universal_model_path)
             },
             'execution_time': self.gftime if hasattr(self, 'gftime') else None,
-            'added_reactions': [],  # This can be populated if there's a way to track added reactions
             'artificial_removed_reactions': removed_reactions if removed_reactions else [],
             'unproducible_targets': unproducible,
             'unreconstructable_targets': unreconstructable,
             'reconstructable_targets': reconstructable,
-            'minimal_completion': minimal_completion
-
-            # ... you can extend this structure as needed
+            'minimal_completion': minimal_completion,
+            'additional_seeds': [met.id for met in self.additional_seeds] if self.additional_seeds else []
         }
 
-        # Save the report in JSON format
         if write_to_file:
             json_report_path = os.path.join(self.resultsPath, "gapfilling_report.json")
             with open(json_report_path, 'w') as json_file:
@@ -428,15 +456,15 @@ class GapFiller:
         # cloned_transport_reactions = self.get_transport_reactions_of_draft(False)
         # for reaction in self.universal_model_compartmentalized.reactions:
         #         reaction.bounds = (-1000, 1000)
-        # demands =[]
-        # for metabolite in self.universal_model_compartmentalized.metabolites:
-        #     if len(metabolite.reactions) <= 1:
-        #         # add demand reaction
-        #         demand_reaction = cobra.Reaction('DM_' + metabolite.id, name = "Demand reaction for " + metabolite.id)
-        #         demand_reaction.add_metabolites({metabolite: -1})
-        #         demand_reaction.bounds = (0, 1000)
-        #         demands.append(demand_reaction)
-        # self.universal_model_compartmentalized.add_reactions(demands)
+        demands = []
+        for metabolite in self.universal_model_compartmentalized.metabolites:
+            if len(metabolite.reactions) <= 1:
+                # add demand reaction
+                demand_reaction = cobra.Reaction('DM_' + metabolite.id, name="Demand reaction for " + metabolite.id)
+                demand_reaction.add_metabolites({metabolite: -1})
+                demand_reaction.bounds = (0, 1000)
+                demands.append(demand_reaction)
+        self.universal_model_compartmentalized.add_reactions(demands)
         write_sbml_model(self.universal_model_compartmentalized, self.universal_model_path)
 
     def clone_reaction(self, compartments, reactions):
@@ -455,8 +483,7 @@ class GapFiller:
         return cloned_reactions
 
     def clone_metabolites(self, compartments):
-        # print(len(self.universal_model_copy.metabolites))
-        # new_metabolites = Parallel(n_jobs=os.cpu_count())(delayed(self.clone_metabolite)(compartments, metabolite) for metabolite in self.universal_model_copy.metabolites)
+        parallelbar.parallelbar.PROGRESS = "CLONING METABOLITES"
         list_of_batches = [self.universal_model_copy.metabolites[i:i + 100] for i in
                            range(0, len(self.universal_model_copy.metabolites), 100)]
         new_metabolites = progress_imap(partial(clone_metabolite, compartments), list_of_batches)
@@ -473,23 +500,6 @@ class GapFiller:
             return [rxn.copy() for rxn in self.transport_reactions]
         else:
             return self.transport_reactions
-
-    # def get_transport_reactions_of_universal(self, **kwargs) -> list:
-    #     """
-    #     Get all the transport reactions in the universal model
-    #     """
-    #
-    #     # check if cloned_model exists
-    #     if self.cloned_model is None:
-    #         self.cloned_model = self.clone_reactions(**kwargs)
-    #
-    #     else:
-    #         print("Using existing cloned model.")
-    #
-    #     # get all the transport reactions in the model
-    #     self.transport_reactions_universal = [r for r in self.cloned_model.reactions if len(r.compartments) > 1]
-    #
-    #     return self.transport_reactions_universal
 
     def get_dead_end_metabolites(self, model: cobra.Model = None) -> list:
         """
@@ -558,24 +568,6 @@ class GapFiller:
 
         return dead_ends
 
-    # def fill_dead_ends(self):
-    #     """
-    #     Fill the dead-end metabolites in the model using transport reactions.
-    #     """
-    #     if self.dead_ends is None:
-    #         raise ValueError(
-    #             "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
-    #     if self.cloned_model is None:
-    #         raise ValueError("The model has not been cloned. Please run the cloning step first.")
-    #
-    #     self.add_known_transport_reactions()
-    #
-    #     metabolites_set = set(self.cloned_model.metabolites)
-    #     filtered_dead_ends = [metabolite for metabolite in self.dead_ends if metabolite not in metabolites_set]
-    #
-    #     print(f"Filled {len(filtered_dead_ends)} dead-end metabolites.")
-    #
-    #     return filtered_dead_ends
 
     def add_known_transport_reactions(self):
         """
@@ -599,69 +591,6 @@ class GapFiller:
 
         print(f"Added known transport reactions for dead-end metabolites.")
 
-    # def create_and_add_transport_reaction(self, metabolite_id):
-    #     """
-    #     Create a new transport reaction for the given metabolite and add it to the cloned model.
-    #     """
-    #     # Create a new transport reaction
-    #     reaction_id = "TR_" + metabolite_id
-    #     transport_reaction = cobra.Reaction(reaction_id)
-    #     transport_reaction.name = "Transport reaction for metabolite {}".format(metabolite_id)
-    #
-    #     # Add the metabolite to transport from its current compartment to a different compartment
-    #     metabolite = self.cloned_model.metabolites.get_by_id(metabolite_id)
-    #     transport_reaction.add_metabolites({metabolite: -1.0})
-    #     transport_reaction.add_metabolites({metabolite_id + "_transport": 1.0})
-    #
-    #     # If the transport reaction is plausible, add it to the model
-    #     if self.is_plausible_transport(transport_reaction):
-    #         transport_reaction.lower_bound = -1000.0  # Allow negative flux (transport out of the compartment)
-    #         transport_reaction.upper_bound = 1000.0  # Allow positive flux (transport into the compartment)
-    #
-    #         # Add the reaction to the cloned model
-    #         self.cloned_model.add_reaction(transport_reaction)
-    #
-    #     return transport_reaction
-    #
-    # def is_plausible_transport(self, transport_reaction):
-    #     """
-    #     Check if the given transport reaction is plausible.
-    #     """
-    #     # Check if the reaction is balanced
-    #     for metabolite in transport_reaction.metabolites:
-    #         if abs(transport_reaction.get_coefficient(metabolite)) != 1.0:
-    #             return False
-    #
-    #     # Check if the reaction is reversible, there are trnsport reactions that are irreversible tho
-    #     if transport_reaction.lower_bound < 0.0 or transport_reaction.upper_bound < 0.0:
-    #         return False
-    #
-    #     # Check if the reaction is thermodynamically feasible
-
-    # def get_plausible_transports_for_dead_ends(self):
-    #     """
-    #     Create a dictionary of plausible transport reactions for each dead-end metabolite.
-    #     """
-    #     if self.dead_ends is None:
-    #         raise ValueError(
-    #             "Dead-end metabolites have not been identified. Please run the dead-end identification step first.")
-    #
-    #     # A dictionary to store the plausible transport reactions for each dead-end metabolite
-    #     plausible_transports = {}
-    #
-    #     # Identify transport reactions in the cloned model
-    #     for reaction in self.cloned_model.reactions:
-    #         # Transport reactions involve metabolites in different compartments
-    #         if len(reaction.compartments) > 1:
-    #             for metabolite in reaction.metabolites:
-    #                 # If the metabolite is a dead-end metabolite, add the reaction to its plausible transports
-    #                 if metabolite in self.dead_ends:
-    #                     if metabolite not in plausible_transports:
-    #                         plausible_transports[metabolite] = []
-    #                     plausible_transports[metabolite].append(reaction)
-    #
-    #     return plausible_transports
-
     def clone_reactions(self, compartments):
         """
         Clone reactions in the model.
@@ -673,6 +602,7 @@ class GapFiller:
         -------
 
         """
+        parallelbar.parallelbar.PROGRESS = "CLONING REACTIONS"
         # results = Parallel(n_jobs=4)(delayed(self.clone_reaction)(reaction, compartment) for reaction in self.universal_model_copy.reactions for compartment in compartments)
         list_of_batches = [self.universal_model_copy.reactions[i:i + 100] for i in
                            range(0, len(self.universal_model_copy.reactions), 100)]
@@ -896,52 +826,51 @@ class GapFiller:
 
         return draft
 
-    def add_transport_reaction_for_dead_ends(self, compartments: list = None, exclude_extr: bool = False,
-                                             verbose: bool = False,
-                                             ):
-
+    def add_transport_reaction_for_dead_ends(self, compartments: list = None, exclude_extr: bool = False):
+        parallelbar.parallelbar.PROGRESS = "ADDING TRANSPORT"
         dead_ends = cobra.io.read_sbml_model(self.targets_path).metabolites
+
+        # dead_ends = self.universal_model.metabolites
 
         if compartments is None:
             compartments = get_compartments_in_model(self.original_model)
 
-        # exclude extracellular compartment from the compartments list
         if exclude_extr:
             for extr_id in ['extr', 'e', 'extracellular']:
                 if extr_id in compartments:
                     compartments.remove(extr_id)
 
-            # Check if there are at least two compartments to create a transport reaction
         if len(compartments) < 2:
             print("Warning: There must be at least two compartments to create a transport reaction.")
             return None
 
-        for dead in dead_ends:
-            for i in range(len(compartments)):  # for each compartment
-                for j in range(len(compartments)):  # for each compartment, including the current one
-                    if i != j:  # ensure we're not creating a transport reaction within the same compartment
-                        metabolite_id = '__'.join(dead.id.split("__")[:-1])
-                        # Create a new transport reaction
-                        transport_reaction = Reaction(id=f"T_{metabolite_id}_{compartments[i]}_to_{compartments[j]}")
-                        transport_reaction.name = f"Transport of {metabolite_id} from {compartments[i]} to {compartments[j]}"
-                        transport_reaction.lower_bound = -1000
-                        transport_reaction.upper_bound = 1000
-                        met1 = self.universal_model.metabolites.get_by_id(f"{metabolite_id}__{compartments[i]}")
-                        met2 = self.universal_model.metabolites.get_by_id(f"{metabolite_id}__{compartments[j]}")
+        compartments_combinations = list(itertools.combinations(compartments, 1))
 
-                        # Add the metabolites to the transport reaction
-                        transport_reaction.add_metabolites({met1: -1, met2: 1})
+        compartments_combinations = list(set([(comp1[0], 'cytop') for comp1 in compartments_combinations if comp1[0] != 'cytop']))
 
-                        # Add the transport reaction to the original model
-                        self.universal_model.add_reactions([transport_reaction])
+        metabolites_ids = list(set(['__'.join(met.id.split("__")[:-1]) for met in dead_ends]))
 
-                        if verbose:
-                            if transport_reaction in self.original_model.reactions:
-                                print(f"Transport reaction for {dead} added to the model.")
-                            else:
-                                print(f"Transport reaction for {dead} not added to the model.")
+        list_of_batches = [metabolites_ids[i:i + 500] for i in range(0, len(metabolites_ids), 500)]
 
-    def build_temporary_universal_model(self, folder_path, related_pathways, utilities_path):
+        result = progress_imap(partial(self.create_transport, compartments_combinations), list_of_batches)
+        for batch in result:
+            self.universal_model_compartmentalized.add_reactions(batch)
+
+    def create_transport(self, compartments_combinations, metabolites):
+        to_add = []
+        for metabolite_id in metabolites:
+            for compartments_combination in compartments_combinations:
+                transport_reaction = Reaction(id=f"T_{metabolite_id}_{compartments_combination[0]}_to_{compartments_combination[1]}")
+                transport_reaction.name = f"Transport of {metabolite_id} between {compartments_combination[0]} and {compartments_combination[1]}"
+                transport_reaction.lower_bound = -1000
+                transport_reaction.upper_bound = 1000
+                met1 = self.universal_model.metabolites.get_by_id(f"{metabolite_id}__{compartments_combination[0]}")
+                met2 = self.universal_model.metabolites.get_by_id(f"{metabolite_id}__{compartments_combination[1]}")
+                transport_reaction.add_metabolites({met1: -1, met2: 1})
+                to_add.append(transport_reaction)
+        return to_add
+
+    def build_temporary_universal_model(self, folder_path, related_pathways: bool = False):
         """
         Build a temporary universal model from the universal model and the gap-filling results.
         Parameters
@@ -954,46 +883,28 @@ class GapFiller:
         -------
 
         """
-
-        pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites',
-                              'Microbial metabolism in diverse environments',
+        pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites', 'Microbial metabolism in diverse environments',
                               'Biosynthesis of cofactors', 'Carbon metabolism', 'Fatty acid metabolism'}
         pathways_to_keep = []
         metabolite_pathways_map = {}
-        read_universal_model = read_sbml_model(self.universal_model_path)
-        universal_model = Model(model=read_universal_model)
+        universal_model = Model(model=self.universal_model_compartmentalized)
         print('Number of reactions in universal model:', len(universal_model.reactions))
         targets = read_sbml_model(self.targets_path)
-        cofactors = json.load(open(os.path.join(utilities_path, 'cofactors.json'), 'r'))
+        cofactors = json.load(open(os.path.join(UTILITIES_PATH, 'cofactors.json'), 'r'))
         for target in targets.metabolites:
-            print(target.id)
             if target.id in universal_model.metabolite_pathway_map.keys():
-                print('target.id is in universal_model.metabolite_pathway_map.keys()', target.id)
                 if '__'.join(target.id.split("__")[:-1]) in cofactors.keys():
-                    pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
-                                         pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
-                    metabolite_pathways_map[target.id] = set(
-                        pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
-                        pathway in cofactors['__'.join(target.id.split("__")[:-1])])
-
-                    print('pathways_to_keep', pathways_to_keep)
-
+                    pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
+                    metabolite_pathways_map[target.id] = set(pathway for pathway in universal_model.metabolite_pathway_map[target.id] if pathway in cofactors['__'.join(target.id.split("__")[:-1])])
                 else:
                     pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id]]
-                    metabolite_pathways_map[target.id] = set(
-                        pathway for pathway in universal_model.metabolite_pathway_map[target.id])
-
-                    print('pathways_to_keep', pathways_to_keep)
+                    metabolite_pathways_map[target.id] = set(pathway for pathway in universal_model.metabolite_pathway_map[target.id])
         pathways_to_keep = set(pathways_to_keep) - pathways_to_ignore
-        print('after the first loop, pathways_to_keep', pathways_to_keep)
-        metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in
-                                   metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
-
-
+        metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
         if related_pathways:
             related_pathways = set()
-            if os.path.exists(os.path.join(utilities_path, 'related_pathways_map.json')):
-                with open(os.path.join(utilities_path, 'related_pathways_map.json'), 'r') as related_pathways_map_file:
+            if os.path.exists(os.path.join(UTILITIES_PATH, 'related_pathways_map.json')):
+                with open(os.path.join(UTILITIES_PATH, 'related_pathways_map.json'), 'r') as related_pathways_map_file:
                     related_pathways_map = json.load(related_pathways_map_file)
             else:
                 related_pathways_map = create_related_pathways_map(universal_model, folder_path)
@@ -1006,23 +917,59 @@ class GapFiller:
             pathways_copy = pathways.copy()
             for pathway in pathways_copy:
                 metabolite_pathways_map[metabolite].update(get_related_pathways(pathway, related_pathways_map))
-        print('Pathways to keep are:', pathways_to_keep)
         to_keep = set([reaction for reaction in universal_model.reactions if "T_" in reaction.id])
-        # number_of_reactions_by_pathway = {}
-        # for pathway in universal_model.groups:
-        #     if pathway.name in pathways_to_keep:
-        #         number_of_reactions_by_pathway[pathway.name] = len(pathway.members)
         for pathway in universal_model.groups:
             if pathway.name in pathways_to_keep:
                 to_keep.update(reaction for reaction in pathway.members)
-        # to_remove = list(set(universal_model.reactions) - to_keep)
-        # get reactions without pathway
-        # for reaction_id in universal_model.reaction_pathway_map.keys():
-        #     if len(universal_model.reaction_pathway_map[reaction_id]) == 0 and universal_model.reactions.get_by_id(reaction_id) in to_remove:
-        #         to_remove.remove(universal_model.reactions.get_by_id(reaction_id))
+        for reaction_id in universal_model.reaction_pathway_map.keys():
+            if len(universal_model.reaction_pathway_map[reaction_id]) == 0:
+                to_keep.add(universal_model.reactions.get_by_id(reaction_id))
         groups = [pathway for pathway in universal_model.groups if pathway.name in pathways_to_keep]
-        universal_model = cobra.Model()
-        universal_model.add_reactions(to_keep)
-        universal_model.add_groups(groups)
+        self.universal_model_compartmentalized = Model()
+        self.universal_model_compartmentalized.add_reactions(to_keep)
+        self.universal_model_compartmentalized.add_groups(groups)
         print('Number of reactions in temporary universal model:', len(universal_model.reactions))
-        write_sbml_model(universal_model, os.path.join(folder_path, 'temporary_universal_model.xml'))
+        write_sbml_model(self.universal_model_compartmentalized, os.path.join(folder_path, 'temporary_universal_model.xml'))
+
+    def identify_additional_seeds(self, combinet, targets):
+        cofactors = json.load(open(os.path.join(UTILITIES_PATH, 'cofactors.json'), 'r'))
+        for metabolite in self.never_producible:
+            metabolite_id = metabolite.lstrip("M_")
+            if metabolite_id in self.universal_model.metabolite_pathway_map.keys():
+                for pathway in self.universal_model.metabolite_pathway_map[metabolite_id]:
+                    if pathway in self.universal_model.pathway_metabolites_map.keys():
+                        metabolites_in_pathway = self.universal_model.pathway_metabolites_map[pathway]
+                        for potential_cofactor in metabolites_in_pathway:
+                            potential_cofactor_id = '__'.join(potential_cofactor.split("__")[:-1])
+                            if potential_cofactor_id in cofactors.keys():
+                                self.additional_seeds.add(self.universal_model.metabolites.get_by_id(potential_cofactor))
+        current_seeds = set(read_sbml_model(self.seeds_path).metabolites)
+        final_seeds = set(current_seeds.union(self.additional_seeds))
+        res = []
+        for met in final_seeds:
+            compartment = '__'.join(met.id.split("__")[-1:])
+            res.append((met.id, compartment))
+
+        write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
+
+        seeds = sbml.readSBMLseeds(self.seeds_path)
+        model = query.get_unproducible(combinet, targets, seeds)
+        never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+        to_remove = set()
+        if not never_producible:
+            for seed in self.additional_seeds:
+                res.pop(res.index((seed.id, '__'.join(seed.id.split("__")[-1:]))))
+                write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
+                seeds = sbml.readSBMLseeds(self.seeds_path)
+                model = query.get_unproducible(combinet, targets, seeds)
+                never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+                if never_producible:
+                    res.append((seed.id, '__'.join(seed.id.split("__")[-1:])))
+                else:
+                    to_remove.add(seed)
+        self.additional_seeds = self.additional_seeds - to_remove
+        print(f"Number of additional seeds: {len(self.additional_seeds)}")
+        print(f"Additional seeds: {[met.id for met in self.additional_seeds]}")
+
+        write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
+
