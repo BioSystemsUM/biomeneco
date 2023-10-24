@@ -1,8 +1,0 @@
-{
-  "objective_function_id": "e_Biomass__cytop",
-  "sinks": [
-  ],
-  "compartments": [
-    "cytop"
-  ]
-}

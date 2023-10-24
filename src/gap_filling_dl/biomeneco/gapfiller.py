@@ -12,12 +12,13 @@ from clyngor.as_pyasp import TermSet, Atom
 from cobra.core import Group
 from cobra.io import write_sbml_model, read_sbml_model
 from meneco import query
-from meneco.query import get_minimal_completion_size
+from meneco.query import get_minimal_completion_size, get_intersection_of_optimal_completions
 from meneco.meneco import run_meneco, extract_xreactions
 from meneco.meneco import sbml
 import copy
 
 from parallelbar.parallelbar import ProgressBar, _update_error_bar
+from tqdm import tqdm
 
 from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
 from .model import Model
@@ -31,6 +32,7 @@ from write_sbml import write_metabolites_to_sbml
 import parallelbar
 
 parallelbar.parallelbar.PROGRESS = "DONE"
+
 
 def _my_process_status(bar_size, worker_queue):
     bar = ProgressBar(total=bar_size, desc=parallelbar.parallelbar.PROGRESS)
@@ -52,8 +54,8 @@ def _my_process_status(bar_size, worker_queue):
         else:
             bar.update(upd_value)
 
-parallelbar.parallelbar._process_status = _my_process_status
 
+parallelbar.parallelbar._process_status = _my_process_status
 
 if platform.system() == 'Linux':
     UTILITIES_PATH = "/home/utilities"
@@ -75,7 +77,7 @@ def clone_metabolite(compartments, metabolites):
 
 
 class GapFiller:
-    def __init__(self, model_path, universal_model_path, results_path):
+    def __init__(self, model_path, universal_model_path, results_path, max_solutions):
         """
         Create a GapFiller object.
         Parameters
@@ -84,6 +86,12 @@ class GapFiller:
         universal_model_path
         results_path
         """
+        self.all_completions = []
+        self.optimal_completions = None
+        self.all_solutions_with_models = []
+        self.positive_solutions = set()
+        self.added_demands = None
+        self.required_additional_seeds_and_demands = set()
         self.additional_seeds = set()
         self.never_producible = None
         self.reconstructable_targets = None
@@ -110,6 +118,7 @@ class GapFiller:
         self.filled_model = None
         self.objective_function_id = None
         self.reaction_dict = {r.id: r for r in self.universal_model.reactions}
+        self.max_solutions = max_solutions
 
     @property
     def seeds_path(self):
@@ -159,8 +168,7 @@ class GapFiller:
     def original_model(self, value):
         self._original_model = value
 
-    def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None,
-            objective_function_id=None, **kwargs):
+    def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None, **kwargs):
         """
         Run the gap-filling algorithm.
 
@@ -214,24 +222,37 @@ class GapFiller:
 
             seeds = sbml.readSBMLseeds(self.seeds_path)
             model = query.get_unproducible(combinet, targets, seeds)
-            never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
-            print(f'Unreconstructable targets after additional seeds ({len(never_producible)}):\n', '\n'.join(never_producible))
+            self.never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+            print(f'Unreconstructable targets after additional seeds ({len(self.never_producible)}):\n', '\n'.join(self.never_producible))
 
-            reconstructable_targets = set(list(unproducible.difference(never_producible)))
+            reconstructable_targets = set(list(unproducible.difference(self.never_producible)))
             print(f'Reconstructable targets ({len(reconstructable_targets)}):\n', '\n'.join(reconstructable_targets))
             self.reconstructable_targets = reconstructable_targets
 
             targets = TermSet(Atom('target("' + t + '")') for t in reconstructable_targets)
             self.minimal_completion = extract_xreactions(get_minimal_completion_size(draftnet, repairnet, seeds, targets), False)
+            print("Minimal completion finished.")
+            print(self.minimal_completion)
+            self.optimal_completions = query.get_optimal_completions(draftnet, repairnet, seeds, targets, len(self.minimal_completion), nmodels=self.max_solutions)
+            print("Optimal completions finished.")
+
             time_end = time.time()
             self.gftime = time_end - time_start
 
+            print("Time taken: ", self.gftime)
             self.minimal_set = set(
                 atom[0] for pred in self.minimal_completion if pred == 'xreaction'
                 for atom in self.minimal_completion[pred])
 
-            print("Time taken: ", self.gftime)
+        print("Gap-filling algorithm finished.")
 
+        self.add_reactions_to_model()
+
+        sol = self.original_model.slim_optimize()
+        if round(sol, 5) > 0:
+            self.remove_unnecessary_seeds_and_demands()
+        print(self.original_model.summary())
+        write_sbml_model(self.original_model, join(self.resultsPath, "gapfilled_model.xml"))
         return self.report(write_to_file=write_to_file, removed_reactions=removed_reactions)
 
     def run_meneco(self, enumeration: bool, json_output: bool) -> dict:
@@ -258,7 +279,7 @@ class GapFiller:
 
     @classmethod
     def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False, objective_function_id: str = None,
-                    compartments=None):
+                    compartments=None, max_solutions=1000):
         """
         Create a Gapfilling object from a folder containing the model, seeds, targets and universal model.
         Parameters
@@ -273,30 +294,11 @@ class GapFiller:
         -------
 
         """
-        model_file = None
-        seeds_file = None
-        targets_file = None
-        universal_model_file = None
-
         shutil.copy(join(UTILITIES_PATH, "universal_model.xml"), folder_path)
-
-        for file in os.listdir(folder_path):
-            file_path = os.path.join(folder_path, file)
-            print(f"Checking file: {file_path}")
-
-            if file.endswith(".xml"):
-                if "model" in file and "universal" not in file and "seeds" not in file and "targets" not in file and \
-                        'compartimentalized' not in file and 'temporary' not in file:
-                    model_file = file
-                if "seeds" in file:
-                    seeds_file = file
-                if "targets" in file:
-                    targets_file = file
-                if file == "universal_model.xml":  # this checks if universal_model_file isn't already set
-                    universal_model_file = file
-                    print("Found universal model.")
-                else:
-                    continue
+        model_file = join(folder_path, "model.xml")
+        seeds_file = join(folder_path, "model_seeds.xml")
+        targets_file = join(folder_path, "model_targets.xml")
+        universal_model_file = join(folder_path, "universal_model.xml")
 
         print(f"model_file: {model_file}")
         print(f"seeds_file: {seeds_file}")
@@ -313,16 +315,14 @@ class GapFiller:
         if not universal_model_file:
             raise FileNotFoundError("No universal model file found in folder.")
 
-        # Read the original model from the model file
-        model_path = os.path.join(folder_path, model_file)
+        model_path = join(folder_path, model_file)
         original_model = Model.from_sbml(model_path, objective_function_id)
         original_model.create_trnas_reactions()
 
-        # Create the GapFiller object with the original model
         gap_filler = cls(model_path=model_path, results_path=results_path,
-                         universal_model_path=os.path.join(folder_path, universal_model_file))
+                         universal_model_path=os.path.join(folder_path, universal_model_file),
+                         max_solutions=max_solutions)
         gap_filler.original_model = original_model
-
         gap_filler.seeds_path = os.path.join(folder_path, seeds_file)
         gap_filler.targets_path = os.path.join(folder_path, targets_file)
         gap_filler.clone_model(compartments=compartments, folder_path=folder_path)
@@ -350,7 +350,7 @@ class GapFiller:
                 raise FileNotFoundError("Temporary universal model file not found.")
         return gap_filler
 
-    def add_reactions_to_model(self, model, reactions: List[str]):
+    def add_reactions_to_model(self):
         """
         Add reactions to a model and run the cobra gap-filling algorithm.
 
@@ -360,27 +360,76 @@ class GapFiller:
         reactions : list
             A list of reactions to add to the model.
         """
-        # print('introduced reactions:', reactions)
-        # reactions = [reaction.replace('R_', '') if 'R_' in reaction else reaction for reaction in reactions]
-        # print('after replacement:', reactions)
-        #
-        for reaction in reactions:
-            reaction_id = reaction[0]  # Get the reaction ID from the tuple
-            # Remove the 'R_' prefix
-            clean_reaction_id = reaction_id.replace('R_', '', 1)
-            try:
-                save_reaction = self.universal_model.reactions.get_by_id(clean_reaction_id)
-                model.add_reactions([save_reaction])
-            except KeyError:
-                print(f"The reaction ID '{clean_reaction_id}' could not be found in the universal model.")
+        positive_solutions = set()
+        already_in_original_model = {reaction.id for reaction in self.original_model.reactions}
+        seeds = read_sbml_model(self.seeds_path)
+        mets_in_medium = set()
+        for exchange in self.original_model.exchanges:
+            if exchange.lower_bound < 0:
+                mets_in_medium.add(exchange.reactants[0].id)
 
-        return model
+        for m in self.optimal_completions:
+            completion = set(a[0] for pred in m if pred == 'xreaction' for a in m[pred])
+            self.all_completions.append(list(completion))
+
+        for completion in self.all_completions:
+            temp_model = self.original_model.copy()
+            to_add = []
+            for reaction in completion:
+                save_reaction = self.universal_model.reactions.get_by_id(reaction.replace("R_", "")).copy()
+                if {save_reaction.id}.issubset(already_in_original_model):
+                    save_reaction.id = save_reaction.id + "_universal"
+                to_add.append(save_reaction)
+            model_ids = [e.id for e in temp_model.metabolites]
+            for seed in seeds.metabolites:
+                if seed.id in model_ids and not {seed.id}.issubset(mets_in_medium):
+                    temp_model.create_sink(seed.id)
+            already_in_original_model = already_in_original_model.union({reaction.id for reaction in to_add})
+            temp_model.add_reactions(to_add)
+            sol = temp_model.slim_optimize()
+            if round(sol, 5) > 0:
+                positive_solutions.add((temp_model, tuple([reaction.id for reaction in to_add])))
+            else:
+                temp_model, sol, demands = self.add_demands_v2(temp_model)
+                if round(sol, 5) > 0:
+                    to_add += demands
+                    positive_solutions.add((temp_model, tuple([reaction.id for reaction in to_add])))
+        self.positive_solutions = positive_solutions
+        if self.positive_solutions:
+            self.original_model = list(self.positive_solutions)[0][0]
+            print(self.original_model.slim_optimize())
+        else:
+            to_add = []
+            for reaction in self.minimal_completion:
+                save_reaction = self.universal_model.reactions.get_by_id(reaction.replace("R_", "")).copy()
+                if {save_reaction.id}.issubset(already_in_original_model):
+                    save_reaction.id = save_reaction.id + "_universal"
+                to_add.append(save_reaction)
+            model_ids = [e.id for e in self.original_model.metabolites]
+            for seed in seeds.metabolites:
+                if seed.id in model_ids and not {seed.id}.issubset(mets_in_medium):
+                    self.original_model.create_sink(seed.id)
+            self.original_model.add_reactions(to_add)
+        print("Positive solutions:", positive_solutions)
+
+    def add_demands_v2(self, model):
+        dead_ends = self.find_deadends(model)
+        demands = []
+        for dead_end in dead_ends:
+            demands.append(model.create_demand(dead_end.id))
+        sol = model.slim_optimize()
+        return model, sol, demands
 
     def report(self, write_to_file=False, removed_reactions: list = None):
 
         if self.filled_model is None:
             self.filled_model = copy.deepcopy(self.original_model)
-
+        sol = self.original_model.optimize()
+        df = self.original_model.summary(sol).to_frame()
+        summary_as_list = df.loc[round(df["flux"], 6) != 0].to_dict(orient='records')
+        summary_parsed = []
+        for row in summary_as_list:
+            summary_parsed.append(f"{row}")
         unproducible = list(self.unproducible) if self.unproducible else []
         unreconstructable = list(self.never_producible) if self.never_producible else []
         reconstructable = list(self.reconstructable_targets) if self.reconstructable_targets else []
@@ -395,14 +444,19 @@ class GapFiller:
                 'universal_model': os.path.basename(self.universal_model_path)
             },
             'execution_time': self.gftime if hasattr(self, 'gftime') else None,
+            'Objective': sol.objective_value,
             'artificial_removed_reactions': removed_reactions if removed_reactions else [],
             'unproducible_targets': unproducible,
             'unreconstructable_targets': unreconstructable,
             'reconstructable_targets': reconstructable,
             'minimal_completion': minimal_completion,
-            'additional_seeds': [met.id for met in self.additional_seeds] if self.additional_seeds else []
+            'additional_seeds': [met.id for met in self.additional_seeds] if self.additional_seeds else [],
+            'essential_additional_seeds_and_demands': [met.id for met in self.required_additional_seeds_and_demands] if self.required_additional_seeds_and_demands else [],
+            'summary': summary_parsed,
+            'positive_solutions': [solution[1] for solution in self.positive_solutions] if self.positive_solutions else [],
+            'all_completions': self.all_completions
         }
-
+        print(report_dict)
         if write_to_file:
             json_report_path = os.path.join(self.resultsPath, "gapfilling_report.json")
             with open(json_report_path, 'w') as json_file:
@@ -567,7 +621,6 @@ class GapFiller:
         self.dead_ends = dead_ends
 
         return dead_ends
-
 
     def add_known_transport_reactions(self):
         """
@@ -875,7 +928,6 @@ class GapFiller:
         Build a temporary universal model from the universal model and the gap-filling results.
         Parameters
         ----------
-        utilities_path
         related_pathways
         folder_path
 
@@ -885,7 +937,8 @@ class GapFiller:
         """
         pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites', 'Microbial metabolism in diverse environments',
                               'Biosynthesis of cofactors', 'Carbon metabolism', 'Fatty acid metabolism'}
-        pathways_to_keep = []
+        pathways_to_keep = ["Nicotinate and nicotinamide metabolism", "One carbon pool by folate, "
+                              "Folate biosynthesis","Pantothenate and CoA biosynthesis", "Riboflavin metabolism"]
         metabolite_pathways_map = {}
         universal_model = Model(model=self.universal_model_compartmentalized)
         print('Number of reactions in universal model:', len(universal_model.reactions))
@@ -928,7 +981,7 @@ class GapFiller:
         self.universal_model_compartmentalized = Model()
         self.universal_model_compartmentalized.add_reactions(to_keep)
         self.universal_model_compartmentalized.add_groups(groups)
-        print('Number of reactions in temporary universal model:', len(universal_model.reactions))
+        print('Number of reactions in temporary universal model:', len(self.universal_model_compartmentalized.reactions))
         write_sbml_model(self.universal_model_compartmentalized, os.path.join(folder_path, 'temporary_universal_model.xml'))
 
     def identify_additional_seeds(self, combinet, targets):
@@ -952,24 +1005,94 @@ class GapFiller:
 
         write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
 
-        seeds = sbml.readSBMLseeds(self.seeds_path)
-        model = query.get_unproducible(combinet, targets, seeds)
-        never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
-        to_remove = set()
-        if not never_producible:
-            for seed in self.additional_seeds:
-                res.pop(res.index((seed.id, '__'.join(seed.id.split("__")[-1:]))))
-                write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
-                seeds = sbml.readSBMLseeds(self.seeds_path)
-                model = query.get_unproducible(combinet, targets, seeds)
-                never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
-                if never_producible:
-                    res.append((seed.id, '__'.join(seed.id.split("__")[-1:])))
-                else:
-                    to_remove.add(seed)
-        self.additional_seeds = self.additional_seeds - to_remove
+        # seeds = sbml.readSBMLseeds(self.seeds_path)
+        # model = query.get_unproducible(combinet, targets, seeds)
+        # never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+        # to_remove = set()
+        # for seed in sorted(self.additional_seeds, key=lambda x: x.id, reverse=True):
+        #     old_number_of_never_producible = len(never_producible)
+        #     res.pop(res.index((seed.id, '__'.join(seed.id.split("__")[-1:]))))
+        #     write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
+        #     seeds = sbml.readSBMLseeds(self.seeds_path)
+        #     model = query.get_unproducible(combinet, targets, seeds)
+        #     never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
+        #     if len(never_producible)>old_number_of_never_producible:
+        #          res.append((seed.id, '__'.join(seed.id.split("__")[-1:])))
+        #     else:
+        #         to_remove.add(seed)
+        # self.additional_seeds = self.additional_seeds - to_remove
         print(f"Number of additional seeds: {len(self.additional_seeds)}")
         print(f"Additional seeds: {[met.id for met in self.additional_seeds]}")
-
         write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
 
+    def add_demands(self):
+        for solution, temp_model in self.all_solutions_with_models:
+            dead_ends = self.find_deadends(temp_model)
+            to_remove = set()
+            for dead_end in dead_ends:
+                temp_model.create_demand(dead_end.id)
+            demands = {reaction for reaction in self.original_model.reactions if reaction.id.startswith("DM_")}
+            initial_sol = self.original_model.slim_optimize()
+            if round(initial_sol, 5) > 0:
+                for demand in demands:
+                    with temp_model as m:
+                        m.reactions.get_by_id(demand.id).bounds = (0, 0)
+                        sol = m.slim_optimize()
+                        if round(sol, 5) > 0:
+                            to_remove.add(demand)
+                        else:
+                            m.reactions.get_by_id(demand.id).bounds = (0, 1000)
+            self.original_model.remove_reactions(list(to_remove))
+            self.added_demands = demands - to_remove
+            sol = self.original_model.slim_optimize()
+            if round(sol, 5) > 0:
+                solution.add(self.added_demands)
+                self.positive_solutions.add(solution)
+        if self.positive_solutions:
+            self.original_model.add_reactions(self.universal_model.reactions.get_by_id(rxn.id) for rxn in list(self.positive_solutions)[0])
+
+    def find_deadends(self, model=None):
+        """
+        Return metabolites that are only produced in reactions.
+
+        Metabolites that are involved in an exchange reaction are never
+        considered to be dead ends.
+
+        """
+
+        if model is None:
+            model = self.original_model
+
+        def is_only_product(metabolite: cobra.Metabolite, reaction: cobra.Reaction) -> bool:
+            """Determine if a metabolite is only a product of a reaction."""
+            if reaction.reversibility:
+                return False
+            if reaction.get_coefficient(metabolite) > 0:
+                return reaction.lower_bound >= 0.0 and reaction.upper_bound > 0
+            else:
+                return reaction.lower_bound < 0.0 and reaction.upper_bound <= 0
+
+        exchanges = frozenset(model.exchanges)
+        return [
+            met
+            for met in model.metabolites
+            if (len(met.reactions) > 0)
+               and all((rxn not in exchanges) and is_only_product(met, rxn) for rxn in met.reactions)
+        ]
+
+    def remove_unnecessary_seeds_and_demands(self):
+        self.required_additional_seeds_and_demands = self.additional_seeds.union(set([met.id for demand in self.original_model.demands for met in demand.metabolites]))
+        to_remove = set()
+        for reaction in self.original_model.reactions:
+            if reaction.id.startswith("Sk_") or reaction.id.startswith("DM_"):
+                original_bounds = reaction.bounds
+                reaction.bounds = (0, 0)
+                sol = self.original_model.slim_optimize()
+                if round(sol, 5) > 0:
+                    to_remove.add(reaction)
+                else:
+                    reaction.bounds = original_bounds
+        self.original_model.remove_reactions(list(to_remove))
+        print(to_remove)
+        for sink in to_remove:
+            self.required_additional_seeds_and_demands = self.required_additional_seeds_and_demands - set([met.id for met in sink.metabolites])

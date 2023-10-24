@@ -26,6 +26,11 @@ def read_model_and_run_gap_filling(processing_path, results_path):
 
     objective_function_id = parameters["objective_function_id"]
 
+    if "max_solutions" in parameters:
+        max_solutions = parameters["max_solutions"]
+    else:
+        max_solutions = 100
+
     # Create seeds + targets from the draft model
     my_model = Model(model, objective_function_id=objective_function_id)
     my_model.create_trnas_reactions()  # Create tRNAs reactions for protein synthesis
@@ -35,14 +40,12 @@ def read_model_and_run_gap_filling(processing_path, results_path):
 
     my_model.identify_seeds()
     my_model.identify_targets()
-
     # Create the sbml files
     my_model.to_sbml('model', processing_path, targets=True, seeds=True)
 
     # Create the GapFiller object
     gf = GapFiller.from_folder(processing_path, results_path, temporary_universal_model=True,
-                               objective_function_id=objective_function_id, compartments=parameters["compartments"])
-
+                               objective_function_id=objective_function_id, compartments=parameters["compartments"], max_solutions=max_solutions)
     # Run the gap filling (optimize=False for the fastest method)
     gf.run(optimize=False, write_to_file=True)
 
@@ -53,10 +56,10 @@ if __name__ == '__main__':
 
     if platform.system() == 'Linux':
         processingPath = sys.argv[1]
-        # resultsPath = sys.argv[2]
+        resultsPath = sys.argv[2]
     elif platform.system() == 'Windows':
-        processingPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\lactis\input"
-        resultsPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\lactis\output"
+        processingPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input"
+        resultsPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\output"
     else:
         print('Running on another operating system')
 

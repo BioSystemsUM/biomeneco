@@ -10,14 +10,6 @@ def edit_metabolite_id(metabolite_id):
     return metabolite_id
 
 
-
-def edit_metabolite_id(metabolite_id):
-    # if metabolite has this structure: 'C02205__C_in', it will be replaced by 'C02205__in', we need to remove the 'C_'
-    if 'C_' in metabolite_id:
-        metabolite_id = metabolite_id.replace('C_', '')
-    return metabolite_id
-
-
 def get_metabolite_pathway_map(model):
     """
     Get a map of metabolite IDs to their associated pathways.
@@ -31,6 +23,8 @@ def get_metabolite_pathway_map(model):
     if not model.reaction_pathway_map:
         model.reaction_pathway_map = get_reaction_pathway_map(model)
     metabolite_pathway_map = {}
+    known_associations = {'C01356': ["Glycerophospholipid metabolism", "Glycerolipid metabolism",
+                                     "Fatty acid biosynthesis", "Biosynthesis of unsaturated fatty acids", "Fatty acid metabolism"]}
     for metabolite in model.metabolites:
         for reaction in metabolite.reactions:
             if reaction.id in model.reaction_pathway_map.keys():
@@ -38,13 +32,17 @@ def get_metabolite_pathway_map(model):
                     if pathway not in metabolite_pathway_map.get(metabolite.id, []):
                         metabolite_pathway_map[metabolite.id] = metabolite_pathway_map.get(metabolite.id, []) + [
                             pathway]
-
-    # print if the metabolite is not in any pathway
-    for metabolite in model.metabolites:
-        if metabolite.id not in metabolite_pathway_map.keys():
-            print(f"Metabolite {metabolite.id} is not in any pathway")
-
+    mets_in_model_no_compartment = ['__'.join(met.id.split("__")[:-1]) for met in model.metabolites]
+    mets_in_model = [met.id for met in model.metabolites]
+    model_compartments = list(set(met.id.split("__")[-1] for met in model.metabolites))
+    for met, pathways in known_associations.items():
+        if met in mets_in_model_no_compartment:
+            for compartment in model_compartments:
+                met_id = met + '__' + compartment
+                if met_id in mets_in_model:
+                    metabolite_pathway_map[met_id] = metabolite_pathway_map.get(met_id, []) + pathways
     return metabolite_pathway_map
+
 
 
 def get_reaction_pathway_map(model):

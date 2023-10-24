@@ -1,20 +1,28 @@
+import copy
 import os
 import random
+import re
 import shutil
 from copy import deepcopy
+from functools import partial
 from typing import Tuple, List
 
 import cobra
 from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
+from pandas import DataFrame
+from parallelbar import progress_imap
 
 from .utils import get_metabolite_pathway_map, get_reaction_pathway_map
-from write_sbml import write_metabolites_to_sbml
-
+try:
+    from write_sbml import write_metabolites_to_sbml
+except:
+    from ..write_sbml import write_metabolites_to_sbml
 
 class Model(cobra.Model):
     def __init__(self, model: cobra.Model = None, objective_function_id=None, *args, **kwargs):
+        self.e_res_precursors = None
         self.precursors_reactions = None
         if model and model.reactions and model.groups:
             self.reaction_pathway_map = get_reaction_pathway_map(model)
@@ -31,6 +39,7 @@ class Model(cobra.Model):
         self.bio_precursors = None
         self._seeds = None
         self._targets = None
+        self.model_old = []
         super().__init__(id_or_model=model, *args, **kwargs)
 
     @classmethod
@@ -154,13 +163,13 @@ class Model(cobra.Model):
         # print(model.summary())
         set_solver(self, solver)
 
-        bio = BioISO(self.objective_function_id, self, objective)
+        bio = BioISO(self.objective_function_id, self, objective, time_out=None)
         bio.run(2, False)
 
         results = bio.get_tree()
         biomass_components = results["M_root_M_root_M_root_product"]["next"]
 
-        targets = []
+        targets = set()
 
         for biomass_component in biomass_components:
 
@@ -170,8 +179,8 @@ class Model(cobra.Model):
                 specific_biomass_components = biomass_components[biomass_component].get("next")
                 if not specific_biomass_components and biomass_components[biomass_component].get(
                         "identifier") not in targets:
-                    targets.append((biomass_components[biomass_component].get("identifier"),
-                                    biomass_components[biomass_component].get("compartment")))
+                    targets.add((biomass_components[biomass_component].get("identifier"),
+                                 biomass_components[biomass_component].get("compartment")))
                 else:
                     for specific_biomass_component in specific_biomass_components:
 
@@ -183,9 +192,56 @@ class Model(cobra.Model):
                             compartment = specific_biomass_component_report.get("compartment")
 
                             if target_id not in targets:
-                                targets.append((target_id, compartment))
-        self.targets = targets
-        return targets
+                                targets.add((target_id, compartment))
+
+        not_produced = self.test_e_precursors(to_ignore=[e[0] for e in targets])
+
+        for not_produced in not_produced:
+            targets.add((not_produced, self.metabolites.get_by_id(not_produced).compartment))
+        self.targets = list(targets)
+        return list(self.targets)
+
+    def test_e_precursors(self, to_ignore=[]):
+        """
+        This function tests any precursor of the biomass.
+        Returns
+        -------
+
+        """
+        if self.bio_precursors is None:
+            self.get_bio_precursors()
+        if self.pre_precursors is None:
+            self.get_pre_precursors()
+
+        res = progress_imap(partial(self.evaluate_preprecursors, to_ignore), self.bio_precursors)
+        e_precursors_res = {"Flux": []}
+        meta_val = []
+        for e_precursor_res, meta in res:
+            e_precursors_res["Flux"].extend(e_precursor_res["Flux"])
+            meta_val.extend(meta)
+
+        self.e_res_precursors = DataFrame(e_precursors_res, index=meta_val)
+
+        return self.e_res_precursors.loc[self.e_res_precursors["Flux"] == 0].index
+
+    def evaluate_preprecursors(self, to_ignore, precursor):
+        e_precursors_res = {"Flux": []}
+        meta_val = []
+        if precursor.id not in to_ignore and precursor.id in self.pre_precursors:
+            # if precursor.id not in self.pre_precursors:
+            #     self.pre_precursors[precursor.id] = []
+            for pre_precursor in self.pre_precursors[precursor.id]:
+                if pre_precursor.id not in to_ignore:
+                    temp_model = copy.deepcopy(self)
+                    e_precursors_res["Flux"].append(self.evaluate_precursor(temp_model, pre_precursor))
+                    meta_val.append(pre_precursor.id)
+        return e_precursors_res, meta_val
+
+    def evaluate_precursor(self, temp_model, current_precursor):
+        reaction = temp_model.create_demand(current_precursor.id)
+        temp_model.objective = reaction.id
+        val = temp_model.slim_optimize()
+        return val
 
     def to_sbml(self, file_name: str, save_path: str, seeds=True, targets=True):
         """
@@ -347,7 +403,7 @@ class Model(cobra.Model):
                 self.get_bio_precursors()
             for precursor in self.bio_precursors:
                 reactions = precursor.reactions
-                if len(reactions) > 2:
+                if len(reactions) > 2 and re.match(r'^[C]\d{5}__.*', precursor.id):
                     self.pre_precursors[precursor.id] = []
                     print(f"{precursor.id} is a product of more than one reaction")
                 else:
@@ -366,8 +422,7 @@ class Model(cobra.Model):
         try:
             return self.reactions.get_by_id(reaction)
         except Exception as e:
-            print(e)
-            print(reaction + " not found")
+            return False
 
     def get_products(self, reaction):
         return self.get_reaction(reaction).products
@@ -376,6 +431,7 @@ class Model(cobra.Model):
         """
         This function creates the tRNA reactions for the protein synthesis
         """
+        print()
         try:
             if self.pre_precursors is None:
                 self.get_pre_precursors()
@@ -392,20 +448,20 @@ class Model(cobra.Model):
     def create_demand(self, metabolite_id):
 
         """ This function creates a demand reaction"""
-
-        reaction_name = "DM_" + metabolite_id
-        self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
-        self.get_reaction(reaction_name).bounds = (0, 10000)
-        return self.get_reaction(reaction_name)
+        if not self.get_reaction("DM_" + metabolite_id):
+            reaction_name = "DM_" + metabolite_id
+            self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
+            self.get_reaction(reaction_name).bounds = (0, 10000)
+            return self.get_reaction(reaction_name)
 
     def create_sink(self, metabolite_id, bounds=(-10000, 10000)):
 
         """ This function creates a sink reaction """
-
-        reaction_name = "Sk_" + metabolite_id
-        self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
-        self.get_reaction(reaction_name).bounds = bounds
-        return self.get_reaction(reaction_name)
+        if not self.get_reaction("Sk_" + metabolite_id):
+            reaction_name = "Sk_" + metabolite_id
+            self.create_reaction(reaction_name).add_metabolites({self.get_metabolite(metabolite_id): -1})
+            self.get_reaction(reaction_name).bounds = bounds
+            return self.get_reaction(reaction_name)
 
     def create_reaction(self, reaction):
         self.add_reactions([cobra.Reaction(reaction)])
