@@ -1,39 +1,37 @@
+import copy
 import itertools
 import json
 import os
+import platform
 import shutil
 import time
 from functools import partial
 from os.path import join, dirname
+from typing import List
+
 import cobra
+import parallelbar
 from bioiso import BioISO, set_solver
-from cobra import Reaction, Metabolite
 from clyngor.as_pyasp import TermSet, Atom
+from cobra import Reaction, Metabolite
 from cobra.core import Group
 from cobra.io import write_sbml_model, read_sbml_model
-from meneco import query
-from meneco.query import get_minimal_completion_size, get_intersection_of_optimal_completions
 from meneco.meneco import run_meneco, extract_xreactions
 from meneco.meneco import sbml
-import copy
-
+from meneco.query import get_minimal_completion_size
+from parallelbar import progress_imap
 from parallelbar.parallelbar import ProgressBar, _update_error_bar
-from tqdm import tqdm
+from typing_extensions import deprecated
+from write_sbml import write_metabolites_to_sbml
 
 from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
 from .model import Model
 from .utils import get_compartments_in_model
 from .utils import identify_dead_end_metabolites
-from parallelbar import progress_imap
-from typing import List
-import platform
-from write_sbml import write_metabolites_to_sbml
 
-import parallelbar
 
+### The following code is to set up the progress bar. The parallelbar package does not allow changing the description is the bar, so I had to change the code.
 parallelbar.parallelbar.PROGRESS = "DONE"
-
-
 def _my_process_status(bar_size, worker_queue):
     bar = ProgressBar(total=bar_size, desc=parallelbar.parallelbar.PROGRESS)
     error_bar_parameters = dict(total=bar_size, position=1, desc='ERROR', colour='red')
@@ -57,23 +55,14 @@ def _my_process_status(bar_size, worker_queue):
 
 parallelbar.parallelbar._process_status = _my_process_status
 
+
+
 if platform.system() == 'Linux':
     UTILITIES_PATH = "/home/utilities"
 elif platform.system() == 'Windows':
     UTILITIES_PATH = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\utilities"
 else:
     print('Running on another operating system')
-
-
-def clone_metabolite(compartments, metabolites):
-    cloned_metabolites = []
-    for metabolite in metabolites:
-        for compartment in compartments:
-            cloned_metabolite = metabolite.copy()
-            cloned_metabolite.id = '__'.join(metabolite.id.split("__")[:-1]) + '__' + compartment
-            cloned_metabolite.compartment = compartment
-            cloned_metabolites.append(cloned_metabolite)
-    return cloned_metabolites
 
 
 class GapFiller:
@@ -196,7 +185,6 @@ class GapFiller:
 
         else:
             time_start = time.time()
-
             draftnet = sbml.readSBMLnetwork(self.model_path, 'draft')
             seeds = sbml.readSBMLseeds(self.seeds_path)
             targets = sbml.readSBMLtargets(self.targets_path)
@@ -233,6 +221,7 @@ class GapFiller:
             self.minimal_completion = extract_xreactions(get_minimal_completion_size(draftnet, repairnet, seeds, targets), False)
             print("Minimal completion finished.")
             print(self.minimal_completion)
+            # the following line does not determine all completions immediately, it only returns a generator to do that.
             self.optimal_completions = query.get_optimal_completions(draftnet, repairnet, seeds, targets, len(self.minimal_completion), nmodels=self.max_solutions)
             print("Optimal completions finished.")
 
@@ -352,13 +341,13 @@ class GapFiller:
 
     def add_reactions_to_model(self):
         """
-        Add reactions to a model and run the cobra gap-filling algorithm.
-
+        Add reactions to a model based on the obtained completion.
+        For each optimal completion, it adds the reactions. If a positive solution is obtained (fba sol) it adds the solution to a list.
+        Otherwise, it adds demands to the model and tries to optimize again. If a positive solution is obtained, it adds the solution to a list.
+        In the end, if at least one positive solution is obtained, the first one is selected as the final model. Otherwise, the minimal completion
+        is added to the model (even without producing biomass).
         Parameters
         ----------
-        model
-        reactions : list
-            A list of reactions to add to the model.
         """
         positive_solutions = set()
         already_in_original_model = {reaction.id for reaction in self.original_model.reactions}
@@ -371,8 +360,6 @@ class GapFiller:
         for m in self.optimal_completions:
             completion = set(a[0] for pred in m if pred == 'xreaction' for a in m[pred])
             self.all_completions.append(list(completion))
-
-        for completion in self.all_completions:
             temp_model = self.original_model.copy()
             to_add = []
             for reaction in completion:
@@ -434,7 +421,7 @@ class GapFiller:
         unreconstructable = list(self.never_producible) if self.never_producible else []
         reconstructable = list(self.reconstructable_targets) if self.reconstructable_targets else []
         minimal_completion = list(self.minimal_completion) if self.minimal_completion else []
-
+        essential_seeds_and_demands = [met.id for met in self.required_additional_seeds_and_demands] if self.required_additional_seeds_and_demands else []
         report_dict = {
             'title': 'Gap-filling report',
             'files_used': {
@@ -451,7 +438,7 @@ class GapFiller:
             'reconstructable_targets': reconstructable,
             'minimal_completion': minimal_completion,
             'additional_seeds': [met.id for met in self.additional_seeds] if self.additional_seeds else [],
-            'essential_additional_seeds_and_demands': [met.id for met in self.required_additional_seeds_and_demands] if self.required_additional_seeds_and_demands else [],
+            'essential_additional_seeds_and_demands': essential_seeds_and_demands,
             'summary': summary_parsed,
             'positive_solutions': [solution[1] for solution in self.positive_solutions] if self.positive_solutions else [],
             'all_completions': self.all_completions
@@ -1005,6 +992,8 @@ class GapFiller:
 
         write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
 
+        # first, I tried to remove the additional seeds that are not necessary. However, even if a seed is not necessary, not having them increases the running time a lot.
+
         # seeds = sbml.readSBMLseeds(self.seeds_path)
         # model = query.get_unproducible(combinet, targets, seeds)
         # never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
@@ -1025,6 +1014,7 @@ class GapFiller:
         print(f"Additional seeds: {[met.id for met in self.additional_seeds]}")
         write_metabolites_to_sbml("model_seeds.xml", dirname(self.seeds_path), list(res))
 
+    @deprecated
     def add_demands(self):
         for solution, temp_model in self.all_solutions_with_models:
             dead_ends = self.find_deadends(temp_model)
@@ -1081,6 +1071,12 @@ class GapFiller:
         ]
 
     def remove_unnecessary_seeds_and_demands(self):
+        """
+        Remove unnecessary seeds and demands from the model.
+        Returns
+        -------
+
+        """
         self.required_additional_seeds_and_demands = self.additional_seeds.union(set([met.id for demand in self.original_model.demands for met in demand.metabolites]))
         to_remove = set()
         for reaction in self.original_model.reactions:
@@ -1088,7 +1084,7 @@ class GapFiller:
                 original_bounds = reaction.bounds
                 reaction.bounds = (0, 0)
                 sol = self.original_model.slim_optimize()
-                if round(sol, 5) > 0:
+                if round(sol, 3) > 0:
                     to_remove.add(reaction)
                 else:
                     reaction.bounds = original_bounds

@@ -23,6 +23,8 @@ else:
 
 
 def run_meneco(paths_map):
+    cobra_model = read_sbml_model(paths_map['model'])
+    universal_model = read_sbml_model(paths_map['repairnet'])
     time_start = time.time()
     draftnet = sbml.readSBMLnetwork(paths_map['model'], "draft")
 
@@ -53,19 +55,25 @@ def run_meneco(paths_map):
 
     print('minimal size =', optimum)
 
-    print('One minimal completion of size {0}:\n\t{1}\n'.format(
-        optimum, '\n\t'.join(optimum)))
+    optimal_completions = query.get_optimal_completions(draftnet, repairnet, seeds, targets, len(optimum), nmodels=50)
 
-    optimal_completions = query.get_optimal_completions(draftnet, repairnet, seeds, targets, len(optimum))
     exec_time = time.time() - time_start
 
     print('execution time = {0}'.format(exec_time))
 
-    cobra_model = read_sbml_model(paths_map['model'])
-    universal_model = read_sbml_model(paths_map['repairnet'])
-
-    cobra_model.add_reactions([universal_model.reactions.get_by_id(reaction.replace("R_", "")) for reaction in optimum])
-    sol = cobra_model.slim_optimize()
+    all_completions = set()
+    positive_sol = 0
+    positive = []
+    for completion in optimal_completions:
+        one_min_sol_lst = set(a[0] for pred in completion if pred == 'xreaction' for a in completion[pred])
+        all_completions.add(tuple(one_min_sol_lst))
+        with cobra_model as tempmodel:
+            tempmodel.add_reactions([universal_model.reactions.get_by_id(reaction.replace("R_", "")) for reaction in one_min_sol_lst])
+            sol = cobra_model.slim_optimize()
+            if round(sol, 5) > 0:
+                positive.append(one_min_sol_lst)
+                positive_sol = sol
+    print(len(all_completions))
     # all_completions = set()
     print("Saving...")
     # for model in optimal_completions:
@@ -74,26 +82,27 @@ def run_meneco(paths_map):
     # all_completions = list(all_completions)
     with open(paths_map['results'], 'w') as f:
         f.write('execution time = {0}\n'.format(exec_time))
-        f.write('objective value = {0}\n'.format(sol))
+        f.write('objective value = {0}\n'.format(positive_sol))
+        f.write('Number of positive solutions = {0}\n'.format(len(positive)))
         f.write(f"reconstructable_targets = {reconstructable_targets}\n")
         f.write(f"unreconstructable = {never_producible}\n")
         f.write('minimal size = {0}\n'.format(optimum))
         f.write('One minimal completion of size {0}:\n\t{1}\n'.format(
             optimum, '\n\t'.join(optimum)))
         f.write('optimal completions:\n')
-        # for completion in all_completions:
-        #     f.write('\t{0}\n'.format('\n\t'.join(completion)))
+        for completion in all_completions:
+            f.write('\t{0}\n'.format('\n\t'.join(completion)))
 
 def synechocystis():
-    my_model = Model(model=read_sbml_model(prefix + 'tests/data/meneco/synechocystis/input/model.xml'), objective_function_id='e_Biomass__cytop')
-    my_model.create_trnas_reactions()
-    seeds, targets = [], []
-    for metabolite in my_model.reactions.e_Biomass__cytop.reactants:
-        targets.append((metabolite.id, metabolite.compartment))
-    my_model.targets = targets
-    my_model.identify_seeds()
-
-    my_model.to_sbml('model', prefix + '/tests/data/meneco/synechocystis/input/', seeds=True, targets=True)
+    # my_model = Model(model=read_sbml_model(prefix + 'tests/data/meneco/synechocystis/input/model.xml'), objective_function_id='e_Biomass__cytop')
+    # my_model.create_trnas_reactions()
+    # seeds, targets = [], []
+    # for metabolite in my_model.reactions.e_Biomass__cytop.reactants:
+    #     targets.append((metabolite.id, metabolite.compartment))
+    # my_model.targets = targets
+    # my_model.identify_seeds()
+    #
+    # my_model.to_sbml('model', prefix + '/tests/data/meneco/synechocystis/input/', seeds=True, targets=True)
 
     paths_map = {'model': prefix + '/tests/data/meneco/synechocystis/input/model.xml',
                  'seeds': prefix + '/tests/data/meneco/synechocystis/input/model_seeds.xml',
@@ -274,16 +283,16 @@ def temp2():
     import logging
 
 
-    mymodel = MyModel(r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input\model_fixed.xml", "e_Biomass__cytop")
-    # universal = read_sbml_model(r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\model_1\input\universal_model_compartmentalized.xml")
-    mymodel.remove_reactions(["R03472__cytop"])
-    # model.reactions.R02135__cytop.bounds = (-1000, 0)
-    write_sbml_model(mymodel, r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input\model_fixed_v2.xml")
+    mymodel = MyModel(r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\cvulgaris\output\gapfilled_model.xml", "e_Biomass__cytop")
+    # # universal = read_sbml_model(r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\model_1\input\universal_model_compartmentalized.xml")
+    # mymodel.remove_reactions([r.id for r in mymodel.metabolites.C01267__cytop.reactions])
+    mymodel.remove_reactions(["R06975__cytop", "R04560__cytop"])
+    write_sbml_model(mymodel, r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\cvulgaris\output\gapfilled_model_temp.xml")
 
     paths_map = {
-        'model': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input\model_fixed_v2.xml",
-        'seeds': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input\model_seeds.xml",
-        'targets': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input\model_targets.xml",
+        'model': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\cvulgaris\output\gapfilled_model_temp.xml",
+        'seeds': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\cvulgaris\input\model_seeds.xml",
+        'targets': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\cvulgaris\input\model_targets.xml",
         'repairnet': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input\temporary_universal_model.xml"}
     # paths_map = {
     #     'model': r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\model_1\input\model_fixed_v3.xml",
@@ -334,7 +343,7 @@ if __name__ == '__main__':
     # add_transport_to_compartimentalized()
     # lactis()
     # synechocystis()
-    # cvulgaris()
+    cvulgaris()
     # start = time.time()
     # model = Model(read_sbml_model(prefix + r"/tests/data/meneco/cvulgaris/input/model.xml"), "e_Biomass__cytop")
     # print("Targets:\n")
@@ -342,6 +351,6 @@ if __name__ == '__main__':
     # print(targets)
     # print(len(targets))
     #temp()
-    temp2()
+    # temp2()
     # print(time.time() - start)
     print("Done")

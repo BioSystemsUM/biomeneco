@@ -14,11 +14,11 @@
       <compartment id="C_cytop" constant="true"/>
     </listOfCompartments>
     <listOfSpecies>
-      <species id="M_e_DNA__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_e_Cofactor__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_e_RNA__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_e_Protein__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_e_RNA__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_e_Carbohydrate__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_e_Cofactor__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_e_DNA__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="M_e_Lipid__cytop" compartment="C_cytop" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>

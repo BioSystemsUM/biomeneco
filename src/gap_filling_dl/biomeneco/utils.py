@@ -4,7 +4,6 @@ from bioservices import KEGG
 from typing import Dict
 
 def edit_metabolite_id(metabolite_id):
-    # if metabolite has this structure: 'C02205__C_in', it will be replaced by 'C02205__in', we need to remove the 'C_'
     if 'C_' in metabolite_id:
         metabolite_id = metabolite_id.replace('C_', '')
     return metabolite_id
@@ -132,9 +131,9 @@ def identify_dead_end_metabolites(model: cobra.Model) -> list:
 
     for metabolite in model.metabolites:
 
-        reactions = list(metabolite.reactions)  # get the reactions in which the metabolite participates
+        reactions = list(metabolite.reactions)
 
-        if len(reactions) == 1:  # filtrar metabolitos que participam apenas numa reação
+        if len(reactions) == 1:
 
             fva_result = flux_variability_analysis(model, reaction_list=reactions)
 
@@ -144,3 +143,14 @@ def identify_dead_end_metabolites(model: cobra.Model) -> list:
     print(f"Number of dead-end metabolites found: {len(dead_ends)}")
 
     return dead_ends
+
+
+def clone_metabolite(compartments, metabolites):
+    cloned_metabolites = []
+    for metabolite in metabolites:
+        for compartment in compartments:
+            cloned_metabolite = metabolite.copy()
+            cloned_metabolite.id = '__'.join(metabolite.id.split("__")[:-1]) + '__' + compartment
+            cloned_metabolite.compartment = compartment
+            cloned_metabolites.append(cloned_metabolite)
+    return cloned_metabolites

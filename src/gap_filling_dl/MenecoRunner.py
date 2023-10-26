@@ -57,9 +57,9 @@ if __name__ == '__main__':
     if platform.system() == 'Linux':
         processingPath = sys.argv[1]
         resultsPath = sys.argv[2]
-    elif platform.system() == 'Windows':
-        processingPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\input"
-        resultsPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\synechocystis\output"
+    elif platform.system() == 'Windows': ### this is just to test the code locally
+        processingPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\model_1\input"
+        resultsPath = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\tests\data\model_1\output"
     else:
         print('Running on another operating system')
 
