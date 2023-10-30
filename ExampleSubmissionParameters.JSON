@@ -1,15 +1,16 @@
 {
   "objective_function_id": "e_Biomass__cytop",
   "sinks": [
-"C00002__er",
-"C00002__chlo",
-"C00002__cytop",
-"C00031__cytop",
-"C03024__chlo",
-"C01092__mito",
-"C19845__mito"
-],
+    "C00002__er",
+    "C00002__chlo",
+    "C00002__cytop",
+    "C00031__cytop",
+    "C03024__chlo",
+    "C01092__mito",
+    "C19845__mito"
+  ],
   "compartments": [
     "cytop", "pero", "chlo", "mito", "er", "golg"
-  ]
+  ],
+  "max_solutions": 50
 }
