@@ -22,17 +22,36 @@ from meneco.query import get_minimal_completion_size
 from parallelbar import progress_imap
 from parallelbar.parallelbar import ProgressBar, _update_error_bar
 from typing_extensions import deprecated
-from write_sbml import write_metabolites_to_sbml
+from gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
 from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
 from .model import Model
-from .utils import get_compartments_in_model
+from .utils import get_compartments_in_model, clone_metabolite
 from .utils import identify_dead_end_metabolites
 
-
-### The following code is to set up the progress bar. The parallelbar package does not allow changing the description is the bar, so I had to change the code.
+### The following code is to set up the progress bar. The parallelbar package does not allow changing the description is
+# the bar, so I had to change the code.
+# Set the default progress bar description to "DONE"
 parallelbar.parallelbar.PROGRESS = "DONE"
+
+
 def _my_process_status(bar_size, worker_queue):
+    """
+        Custom process status function to update the progress bar and error bar based on the worker queue.
+
+        This function overrides the default behavior to allow for a secondary 'error bar' which
+        tracks the number of errors encountered during processing. The main progress bar tracks
+        successful updates.
+
+        Args:
+            bar_size (int): The total size of the progress bar, representing the work to be done.
+            worker_queue (queue.Queue): A queue that receives updates from worker threads/processes.
+
+        The function listens for updates from the worker queue and updates the progress bar accordingly.
+        If an error is encountered (indicated by a True flag in the queue), an error bar is updated.
+        When a None flag is received, it signals the end of processing, and the function closes the
+        progress bars and exits.
+        """
     bar = ProgressBar(total=bar_size, desc=parallelbar.parallelbar.PROGRESS)
     error_bar_parameters = dict(total=bar_size, position=1, desc='ERROR', colour='red')
     error_bar = {}
@@ -55,12 +74,12 @@ def _my_process_status(bar_size, worker_queue):
 
 parallelbar.parallelbar._process_status = _my_process_status
 
-
-
 if platform.system() == 'Linux':
     UTILITIES_PATH = "/home/utilities"
 elif platform.system() == 'Windows':
     UTILITIES_PATH = r"C:\Users\Bisbii\PythonProjects\gap_filling_dl\utilities"
+elif platform.system() == 'Darwin':
+    UTILITIES_PATH = "/Users/josediogomoura/gap_filling_dl/utilities"
 else:
     print('Running on another operating system')
 
@@ -68,13 +87,92 @@ else:
 class GapFiller:
     def __init__(self, model_path, universal_model_path, results_path, max_solutions):
         """
-        Create a GapFiller object.
+        Initialize the GapFiller object which is designed to fill gaps in metabolic models.
+
+        The GapFiller uses a given metabolic model and a universal model containing all known reactions to find solutions that enable the production of target metabolites. It can generate multiple solutions and identify the minimal set of reactions needed to achieve the desired metabolic functions.
+
         Parameters
         ----------
-        model_path
-        universal_model_path
-        results_path
+        model_path : str
+            Path to the file containing the metabolic model to be gap-filled.
+        universal_model_path : str
+            Path to the file containing the universal model with all known reactions.
+        results_path : str
+            Path where the results of the gap-filling process will be stored.
+        max_solutions : int
+            Maximum number of solutions to find during the gap-filling process.
+
+        Attributes
+        ----------
+        all_completions : list
+            to store all possible completions found during the gap-filling process.
+        optimal_completions : list or None
+            List to store the optimal completions if identified, otherwise None.
+        all_solutions_with_models : list
+            to store all solutions along with their corresponding models.
+        positive_solutions : set
+            to store solutions that result in a positive outcome, such as growth or production of target metabolites.
+        added_demands : set or None
+            Set to keep track of demand reactions added to the model, or None if not applicable.
+        required_additional_seeds_and_demands : set
+            to keep track of additional seeds and demands required for the model to produce target metabolites.
+        additional_seeds : set
+            of additional seed metabolites identified during the gap-filling process.
+        never_producible : set or None
+            Set of metabolites that are identified as never producible, or None if not applicable.
+        reconstructable_targets : set or None
+            Set of targets that can be reconstructed, or None if not applicable.
+        unproducible : set or None
+            Set of metabolites that cannot be produced, or None if not applicable.
+        resultsPath : str
+            Path to the results directory.
+        universal_model_copy : cobra.Model or None
+            A copy of the universal model, or None if not yet created.
+        universal_model_compartmentalized : cobra.Model or None
+            The universal model with compartmentalization, or None if not yet created.
+        transport_reactions_universal : list or None
+            List of transport reactions in the universal model, or None if not applicable.
+        transport_reactions : list or None
+            List of transport reactions added to the model, or None if not applicable.
+        dead_ends : list or None
+            List of dead-end metabolites in the model, or None if not yet identified.
+        cloned_model : cobra.Model or None
+            A cloned version of the original model, or None if not yet created.
+        temporary_universal_model : cobra.Model or None
+            A temporary universal model used during the gap-filling process, or None if not yet created.
+        original_model : cobra.Model or None
+            The original metabolic model before gap-filling, or None if not yet loaded.
+        _universal_model : cobra.Model or None
+            Internal attribute for the universal model, or None if not yet loaded.
+        minimal_set : list or None
+            List of reactions constituting the minimal set required for gap-filling, or None if not yet identified.
+        minimal_completion : list or None
+            List of reactions constituting the minimal completion, or None if not yet identified.
+        gftime : float or None
+            Time taken for the gap-filling process, or None if not yet computed.
+        cobra_filled_model : cobra.Model or None
+            The gap-filled model using COBRApy, or None if not yet created.
+        results_meneco : dict or None
+            Results from the Meneco tool, or None if not yet computed.
+        universal_model_path : str
+            Path to the universal model file.
+        model_path : str
+            Path to the metabolic model file.
+        _seeds_path : str or None
+            Internal path to the seeds file, or None if not yet set.
+        _targets_path : str or None
+            Internal path to the targets file, or None if not yet set.
+        filled_model : cobra.Model or None
+            The final gap-filled model, or None if not yet created.
+        objective_function_id : str or None
+            ID of the objective function used in the model, or None if not yet set.
+        reaction_dict : dict
+            Dictionary mapping reaction IDs to reaction objects in the universal model.
+        max_solutions : int
+            The maximum number of gap-filling solutions to compute.
         """
+
+        # Initialize all attributes
         self.all_completions = []
         self.optimal_completions = None
         self.all_solutions_with_models = []
@@ -111,50 +209,116 @@ class GapFiller:
 
     @property
     def seeds_path(self):
+        """
+        Get the file path to the seeds used for gap-filling.
+
+        Returns:
+            str: The file path to the seeds.
+        """
         return self._seeds_path
 
     @seeds_path.setter
     def seeds_path(self, file_path):
+        """
+        Set the file path to the seeds used for gap-filling.
+
+        Args:
+            file_path (str): The file path to the seeds.
+        """
         self._seeds_path = file_path
 
     @property
     def targets_path(self):
+        """
+        Get the file path to the targets used for gap-filling.
+
+        Returns:
+            str: The file path to the targets.
+        """
         return self._targets_path
 
     @targets_path.setter
     def targets_path(self, file_path):
+        """
+        Set the file path to the targets used for gap-filling.
+
+        Args:
+            file_path (str): The file path to the targets.
+        """
         self._targets_path = file_path
 
     # read the universal model: cobra.io.read_sbml_model(universal_model_path)
 
     @property
     def universal_model_path(self):
+        """
+        Get the file path to the universal model used for gap-filling.
+
+        If `_universal_model_path` is `None`, it sets a default path based on the `model_path`.
+
+        Returns:
+            str: The file path to the universal model.
+        """
         if self._universal_model_path is None:
             self._universal_model_path = os.path.join(os.path.dirname(self.model_path), 'universal_model.xml')
         return self._universal_model_path
 
     @universal_model_path.setter
     def universal_model_path(self, value):
+        """
+        Set the file path to the universal model used for gap-filling.
+
+        Args:
+            value (str): The file path to the universal model.
+        """
         self._universal_model_path = value
 
     @property
     def universal_model(self):
+        """
+        Get the universal model used for gap-filling.
+
+        If `_universal_model` is `None`, it reads the universal model from the `universal_model_path`.
+
+        Returns:
+            cobra.Model: The universal model.
+        """
         if self._universal_model is None:
             self._universal_model = cobra.io.read_sbml_model(self.universal_model_path)
         return self._universal_model
 
     @universal_model.setter
     def universal_model(self, value):
+        """
+            Set the universal model used for gap-filling.
+
+            Args:
+                value (cobra.Model): The universal model to set.
+            """
         self._universal_model = value
 
     @property
     def original_model(self):
+        """
+            Get the original model used for gap-filling.
+
+            If `_original_model` is `None`, it reads the original model from the `model_path`.
+
+            Returns:
+                cobra.Model: The original model.
+            """
         if self._original_model is None:
             self._original_model = cobra.io.read_sbml_model(self.model_path)
         return self._original_model
 
     @original_model.setter
     def original_model(self, value):
+        """
+            Set the original model used for gap-filling.
+
+            Args:
+                value (cobra.Model): The original model to set.
+            """
         self._original_model = value
 
     def run(self, optimize: bool = False, write_to_file: bool = False, removed_reactions: list = None, **kwargs):
@@ -163,13 +327,16 @@ class GapFiller:
 
         Parameters
         ----------
-        write_to_file
-        removed_reactions
-        optimize
-        kwargs:
+        optimize : bool, optional
+            If True, the gap-filling algorithm will optimize the model after adding reactions.
+        write_to_file : bool, optional
+            If True, the gap-filled model will be written to a file.
+        removed_reactions : list, optional
+            List of reactions to remove from the model before gap-filling.
+        kwargs
             Keyword arguments to pass to the gap-filling algorithm.
-
         """
+
         print("Running gap-filling algorithm...")
         if self.original_model is not None:
             write_sbml_model(self.original_model, self.model_path)
@@ -211,18 +378,22 @@ class GapFiller:
             seeds = sbml.readSBMLseeds(self.seeds_path)
             model = query.get_unproducible(combinet, targets, seeds)
             self.never_producible = set(a[0] for pred in model if pred == 'unproducible_target' for a in model[pred])
-            print(f'Unreconstructable targets after additional seeds ({len(self.never_producible)}):\n', '\n'.join(self.never_producible))
+            print(f'Unreconstructable targets after additional seeds ({len(self.never_producible)}):\n',
+                  '\n'.join(self.never_producible))
 
             reconstructable_targets = set(list(unproducible.difference(self.never_producible)))
             print(f'Reconstructable targets ({len(reconstructable_targets)}):\n', '\n'.join(reconstructable_targets))
             self.reconstructable_targets = reconstructable_targets
 
             targets = TermSet(Atom('target("' + t + '")') for t in reconstructable_targets)
-            self.minimal_completion = extract_xreactions(get_minimal_completion_size(draftnet, repairnet, seeds, targets), False)
+            self.minimal_completion = extract_xreactions(
+                get_minimal_completion_size(draftnet, repairnet, seeds, targets), False)
             print("Minimal completion finished.")
             print(self.minimal_completion)
             # the following line does not determine all completions immediately, it only returns a generator to do that.
-            self.optimal_completions = query.get_optimal_completions(draftnet, repairnet, seeds, targets, len(self.minimal_completion), nmodels=self.max_solutions)
+            self.optimal_completions = query.get_optimal_completions(draftnet, repairnet, seeds, targets,
+                                                                     len(self.minimal_completion),
+                                                                     nmodels=self.max_solutions)
             print("Optimal completions finished.")
 
             time_end = time.time()
@@ -267,20 +438,29 @@ class GapFiller:
         return self.results_meneco
 
     @classmethod
-    def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False, objective_function_id: str = None,
+    def from_folder(cls, folder_path, results_path, temporary_universal_model: bool = False,
+                    objective_function_id: str = None,
                     compartments=None, max_solutions=1000):
         """
         Create a Gapfilling object from a folder containing the model, seeds, targets and universal model.
         Parameters
         ----------
-        folder_path
-        results_path
-        temporary_universal_model
-        objective_function_id
-        compartments
-
+        folder_path : str
+            The path to the folder containing the model, seeds, targets and universal model.
+        results_path : str
+            The path to the folder where the results will be stored.
+        temporary_universal_model : bool, optional
+            If True, a temporary universal model will be created for the gap-filling process.
+        objective_function_id : str, optional
+            The ID of the objective function to use for the gap-filling process.
+        compartments : list, optional
+            A list of compartments to use for the gap-filling process.
+        max_solutions : int, optional
+            The maximum number of solutions to compute.
         Returns
         -------
+        gap_filler : GapFiller
+            The GapFiller object.
 
         """
         shutil.copy(join(UTILITIES_PATH, "universal_model.xml"), folder_path)
@@ -349,7 +529,7 @@ class GapFiller:
         Parameters
         ----------
         """
-        positive_solutions = set()
+        positive_solutions = set()  # those that produce biomass
         already_in_original_model = {reaction.id for reaction in self.original_model.reactions}
         seeds = read_sbml_model(self.seeds_path)
         mets_in_medium = set()
@@ -377,7 +557,7 @@ class GapFiller:
             if round(sol, 5) > 0:
                 positive_solutions.add((temp_model, tuple([reaction.id for reaction in to_add])))
             else:
-                temp_model, sol, demands = self.add_demands_v2(temp_model)
+                temp_model, sol, demands = self.add_demands_v2(temp_model)  # type: ignore
                 if round(sol, 5) > 0:
                     to_add += demands
                     positive_solutions.add((temp_model, tuple([reaction.id for reaction in to_add])))
@@ -395,11 +575,29 @@ class GapFiller:
             model_ids = [e.id for e in self.original_model.metabolites]
             for seed in seeds.metabolites:
                 if seed.id in model_ids and not {seed.id}.issubset(mets_in_medium):
-                    self.original_model.create_sink(seed.id)
+                    self.original_model.create_sink(seed.id)  # type: ignore
             self.original_model.add_reactions(to_add)
         print("Positive solutions:", positive_solutions)
 
     def add_demands_v2(self, model):
+        """
+        Add demands to the model.
+
+        Parameters
+        ----------
+        model : cobra.Model
+            The model to add demands to.
+
+        Returns
+        -------
+        model : cobra.Model
+            The model with demands added.
+        sol : float
+            The solution of the model.
+        demands : list
+            The list of demands added to the model.
+        """
+
         dead_ends = self.find_deadends(model)
         demands = []
         for dead_end in dead_ends:
@@ -408,6 +606,21 @@ class GapFiller:
         return model, sol, demands
 
     def report(self, write_to_file=False, removed_reactions: list = None):
+        """
+        Generate a report of the gap-filling process.
+        Parameters
+        ----------
+        write_to_file : bool, optional
+            If True, the report will be written to a file.
+        removed_reactions : list, optional
+            List of reactions removed from the model before gap-filling.
+
+        Returns
+        -------
+        report_dict : dict
+            A dictionary containing information about the gap-filling process.
+
+        """
 
         if self.filled_model is None:
             self.filled_model = copy.deepcopy(self.original_model)
@@ -421,7 +634,8 @@ class GapFiller:
         unreconstructable = list(self.never_producible) if self.never_producible else []
         reconstructable = list(self.reconstructable_targets) if self.reconstructable_targets else []
         minimal_completion = list(self.minimal_completion) if self.minimal_completion else []
-        essential_seeds_and_demands = [met.id for met in self.required_additional_seeds_and_demands] if self.required_additional_seeds_and_demands else []
+        essential_seeds_and_demands = [met.id for met in
+                                       self.required_additional_seeds_and_demands] if self.required_additional_seeds_and_demands else []
         report_dict = {
             'title': 'Gap-filling report',
             'files_used': {
@@ -440,7 +654,8 @@ class GapFiller:
             'additional_seeds': [met.id for met in self.additional_seeds] if self.additional_seeds else [],
             'essential_additional_seeds_and_demands': essential_seeds_and_demands,
             'summary': summary_parsed,
-            'positive_solutions': [solution[1] for solution in self.positive_solutions] if self.positive_solutions else [],
+            'positive_solutions': [solution[1] for solution in
+                                   self.positive_solutions] if self.positive_solutions else [],
             'all_completions': self.all_completions
         }
         print(report_dict)
@@ -449,31 +664,21 @@ class GapFiller:
             with open(json_report_path, 'w') as json_file:
                 json.dump(report_dict, json_file, indent=4)
 
-    def check_reactions(self, reactions: list):
+    def clone_model(self, compartments: list = None, **kwargs):
         """
-
+        Clone the original model and add the compartments to the metabolites and reactions.
         Parameters
         ----------
-        reactions
+        compartments : list, optional
+            List of compartments to add to the model.
+
+        kwargs :
+            Keyword arguments to pass to the compartmentalization function.
+
+        Returns
+        -------
+
         """
-        if self.filled_model is None:
-            self.filled_model = copy.deepcopy(self.original_model)
-
-        # remove the "R_" prefix from all the reactions if needed
-        for reaction in reactions:
-            if 'R_' in reaction:
-                reactions[reactions.index(reaction)] = reaction.replace('R_', '')
-
-        for reaction in reactions:
-            if reaction not in self.universal_model.reactions:
-                print(f"Reaction {reaction} not found in the universal model.")
-        #     else:
-        #         # add reactions to the model
-        #         self.filled_model.add_reactions([self.universal_model.reactions.get_by_id(reaction)])
-        #         print(f"\n\nReaction: {reaction} has been added to the model.")
-        # return self.filled_model
-
-    def clone_model(self, compartments: list = None, **kwargs):
         # Get the compartments in the model
         if not compartments:
             compartments = get_compartments_in_model(self.original_model)
@@ -509,6 +714,19 @@ class GapFiller:
         write_sbml_model(self.universal_model_compartmentalized, self.universal_model_path)
 
     def clone_reaction(self, compartments, reactions):
+        """
+        Clone a reaction and add the compartments to the metabolites.
+        Parameters
+        ----------
+        compartments : list
+            List of compartments to add to the reaction.
+        reactions : list
+            List of reactions to clone.
+
+        Returns
+        -------
+
+        """
         cloned_reactions = []
         for reaction in reactions:
             for compartment in compartments:
@@ -524,37 +742,22 @@ class GapFiller:
         return cloned_reactions
 
     def clone_metabolites(self, compartments):
+        """
+        Clone metabolites and add the compartments to the metabolites.
+        Parameters
+        ----------
+        compartments : list
+            List of compartments to add to the metabolites.
+
+        Returns
+        -------
+        """
         parallelbar.parallelbar.PROGRESS = "CLONING METABOLITES"
         list_of_batches = [self.universal_model_copy.metabolites[i:i + 100] for i in
                            range(0, len(self.universal_model_copy.metabolites), 100)]
         new_metabolites = progress_imap(partial(clone_metabolite, compartments), list_of_batches)
         new_metabolites = [item for sublist in new_metabolites for item in sublist]
         self.universal_model_copy.add_metabolites(new_metabolites)
-
-    def get_transport_reactions_of_draft(self, clone: bool = False) -> list:
-        """
-        Get all the transport reactions in the draft model
-        """
-        self.transport_reactions = [r for r in self.original_model.reactions if len(r.compartments) > 1]
-
-        if clone:
-            return [rxn.copy() for rxn in self.transport_reactions]
-        else:
-            return self.transport_reactions
-
-    def get_dead_end_metabolites(self, model: cobra.Model = None) -> list:
-        """
-        Identify dead-end metabolites in the model
-        """
-
-        # if no model is provided, use the original model and save the result to self.dead_ends
-        if model is None:
-            model = self.original_model
-            self.dead_ends = identify_dead_end_metabolites(model)
-            return self.dead_ends
-        else:
-            # If a model is provided, just return the result without saving it to self.dead_ends
-            return identify_dead_end_metabolites(model)
 
     def identify_dead_end_metabolites_with_bioiso(self, objective_function_id, objective: str = 'maximize',
                                                   solver: str = 'cplex') -> List[str]:
@@ -570,9 +773,17 @@ class GapFiller:
 
         Parameters
         ----------
-        solver
-        objective
-        objective_function_id
+        solver : str, optional
+            The solver to use. Either 'cplex' or 'glpk'.
+        objective : str, optional
+            The type of objective function. Either 'maximize' or 'minimize'.
+        objective_function_id : str
+            The ID of the objective function to use for the gap-filling process.
+
+        Returns
+        -------
+        dead_ends : list
+            List of dead-end metabolites.
         """
 
         if self.objective_function_id is None:
@@ -609,38 +820,16 @@ class GapFiller:
 
         return dead_ends
 
-    def add_known_transport_reactions(self):
-        """
-        Add known transport reactions to the model to resolve dead-end metabolites.
-        """
-        if self.dead_ends is None:
-            dead_ends = self.get_dead_end_metabolites()
-        else:
-            dead_ends = self.dead_ends
-
-        transport_reactions = {met: [] for met in dead_ends}
-        for reaction in self.transport_reactions:
-            for met in reaction.metabolites:
-                if met in transport_reactions:
-                    transport_reactions[met].append(reaction.id)
-
-        for met in dead_ends:
-            for reaction_id in transport_reactions[met]:
-                reaction = self.reaction_dict[reaction_id]
-                self.original_model.add_reactions([reaction.copy()])
-
-        print(f"Added known transport reactions for dead-end metabolites.")
-
     def clone_reactions(self, compartments):
         """
         Clone reactions in the model.
         Parameters
         ----------
-        compartments
+        compartments : list
+            List of compartments to add to the reactions.
 
         Returns
         -------
-
         """
         parallelbar.parallelbar.PROGRESS = "CLONING REACTIONS"
         # results = Parallel(n_jobs=4)(delayed(self.clone_reaction)(reaction, compartment) for reaction in self.universal_model_copy.reactions for compartment in compartments)
@@ -653,6 +842,10 @@ class GapFiller:
     def clone_groups(self, compartments):
         """
         Clone groups in the model.
+        Parameters
+        ----------
+        compartments : list
+            List of compartments to add to the groups.
         Returns
         -------
 
@@ -673,200 +866,23 @@ class GapFiller:
             new_groups.append(group_copy)
         self.universal_model_compartmentalized.add_groups(new_groups)
 
-    @staticmethod
-    def met_is_being_consumed_or_produced_at_reaction(met_id: str, reaction: cobra.Reaction):
+    def add_transport_reaction_for_dead_ends(self, compartments: list = None, exclude_extr: bool = False,
+                                             ):
         """
-        This function checks if a metabolite is being consumed or produced at a reaction
-
+        Add transport reactions for dead-end metabolites.
         Parameters
         ----------
-        met_id: str
-            The ID of the metabolite.
-        reaction: cobra.Reaction
-            The reaction to check.
+        mock_model : cobra.Model, optional
+            If True, a mock model will be used to identify dead-end metabolites. ONLY USE THIS FOR TESTING.
+        compartments : list, optional
+            List of compartments to add to the transport reactions.
+        exclude_extr : bool, optional
+            If True, exclude the extracellular compartment.
 
         Returns
         -------
-        str
-            'consumed' if the metabolite is a reactant in the reaction,
-            'produced' if the metabolite is a product of the reaction,
-            'not involved' if the metabolite is neither a reactant nor a product of the reaction.
-        """
-        metabolite = reaction.model.metabolites.get_by_id(met_id)
-        if metabolite in reaction.reactants:
-            return 'consumed'
-        elif metabolite in reaction.products:
-            return 'produced'
-        else:
-            return 'not involved'
-
-        # for met in dead_end_metabolites:...
-
-    def check_metabolite_in_reaction(self, met_id: str, reactions: list = None) -> dict:
-        """
-        This function checks if a metabolite is being consumed or produced at a reaction
-
-        Parameters
-        ----------
-        met_id: str
-            The ID of the metabolite.
-        reactions: list[cobra.Reaction]
-            The reaction to check.
-
-        Returns
-        -------
-        str
-            'consumed' if the metabolite is a reactant in the reaction,
-            'produced' if the metabolite is a product of the reaction,
-            'not involved' if the metabolite is neither a reactant nor a product of the reaction.
-        """
-        if reactions is None:
-            reactions = self.original_model.metabolites.get_by_id(met_id).reactions
-
-        involvement = {}
-        i = 0
-        for reaction in reactions:
-            involvement[reaction.id] = self.met_is_being_consumed_or_produced_at_reaction(met_id, reaction)
-            print('reaction', i, ': ', reaction.id,
-                  'is reversible: ', reaction.reversibility,
-                  'and the lower bound is: ', reaction.lower_bound,
-                  'and the upper bound is: ', reaction.upper_bound,
-                  'and the objective coefficient is: ', reaction.objective_coefficient)
-            i += 1
-
-        return involvement
-
-    def search_dead_end(self, metabolite_id, consumed=True, produced=True, verbose=False) -> tuple:
-        """
-        This method searches for reactions in the universal model where a given metabolite is consumed or produced.
-
-        Parameters
-        ----------
-        verbose: bool, optional
-            If True, the method will print the reactions where the metabolite is consumed or produced.
-        metabolite_id: str
-            The ID of the metabolite.
-        consumed: bool, optional
-            If True, the method will search for reactions where the metabolite is consumed.
-        produced: bool, optional
-            If True, the method will search for reactions where the metabolite is produced.
-
-        Returns
-        -------
-        tuple
-            A tuple containing two lists:
-            - The first list contains reactions where the metabolite is consumed.
-            - The second list contains reactions where the metabolite is produced.
-        """
-        # Get the metabolite object from the model
-        metabolite = self.universal_model_compartmentalized.metabolites.get_by_id(metabolite_id)
-
-        # Initialize lists to store reactions where the metabolite is consumed or produced
-        consumed_reactions = []
-        produced_reactions = []
-
-        # Iterate over all reactions in the model
-        for reaction in self.universal_model_compartmentalized.reactions:
-            # Check if the metabolite is a reactant in the reaction
-            if metabolite in reaction.reactants and consumed:
-                consumed_reactions.append(reaction)
-            # Check if the metabolite is a product in the reaction
-            if metabolite in reaction.products and produced:
-                produced_reactions.append(reaction)
-
-        if verbose:
-            if consumed:
-                print(f"Reactions where {metabolite_id} is consumed:")
-                for reaction in consumed_reactions:
-                    print(reaction.id)
-            if produced:
-                print(f"Reactions where {metabolite_id} is produced:")
-                for reaction in produced_reactions:
-                    print(reaction.id)
-
-        return consumed_reactions, produced_reactions
-
-    def deal_dead_ends(self, dead_ends: list):
-        """
-        This method deals with dead-end metabolites by searching for reactions in the universal model where the dead-end metabolite is consumed or produced and then adding those reactions to the draft model.
-
-        Parameters
-        ----------
-        dead_ends: list
-            List of dead-end metabolite IDs.
-
-        Returns
-        -------
-        cobra.Model
-            The updated draft model with added reactions.
         """
 
-        if dead_ends is None:
-            dead_ends = self.dead_ends
-            if dead_ends is None:
-                self.identify_dead_end_metabolites_with_bioiso(objective_function_id=self.objective_function_id)
-                dead_ends = self.dead_ends
-
-        # Copy the draft model
-        draft = self.original_model.copy()
-
-        # Iterate over dead ends
-        for dead in dead_ends:
-            # Reset flags
-            flag_consumed = False
-            flag_produced = False
-
-            # Initialize lists to store reactions where the dead end is consumed or produced
-            consumed_uni = []
-            produced_uni = []
-
-            # Find reactions associated with dead ends in the draft model
-            reactions_dead_end = draft.metabolites.get_by_id(dead).reactions
-
-            # Check if dead end is being produced or consumed
-            for reaction in reactions_dead_end:
-                if self.met_is_being_consumed_or_produced_at_reaction(dead, reaction) == 'consumed':
-                    flag_consumed = True
-                elif self.met_is_being_consumed_or_produced_at_reaction(dead, reaction) == 'produced':
-                    flag_produced = True
-
-            # Find reactions in the universal model where the dead end is consumed or produced
-            if flag_consumed and flag_produced:
-                consumed_uni, produced_uni = self.search_dead_end(dead, consumed=True, produced=True)
-            elif flag_consumed:
-                consumed_uni, produced_uni = self.search_dead_end(dead, consumed=False, produced=True)
-            elif flag_produced:
-                consumed_uni, produced_uni = self.search_dead_end(dead, consumed=True, produced=False)
-
-            # Add reactions from the universal model to the draft model
-            for reaction in consumed_uni + produced_uni:
-                # Create a copy of the reaction
-                reaction_copy = reaction.copy()
-
-                # Check if the metabolite is in different compartments
-                if dead.split('__')[-1] not in [met.id.split('__')[-1] for met in reaction_copy.metabolites]:
-                    # Create a new transport reaction
-                    transport_reaction = Reaction(id=f"transport_{dead}")
-                    transport_reaction.name = f"Transport of {dead}"
-                    transport_reaction.lower_bound = -1000
-                    transport_reaction.upper_bound = 1000
-
-                    # Create two metabolite objects for each compartment # review here
-                    met1 = Metabolite(id=f"{dead}", compartment=list(reaction_copy.compartments)[0])
-                    met2 = Metabolite(id=f"{dead}", compartment=list(reaction_copy.compartments)[1])
-
-                    # Add the metabolites to the transport reaction
-                    transport_reaction.add_metabolites({met1: -1, met2: 1})
-
-                    # Add the transport reaction to the draft model
-                    draft.add_reactions([transport_reaction])
-
-                # Add the reaction to the draft model
-                draft.add_reactions([reaction_copy])
-
-        return draft
-
-    def add_transport_reaction_for_dead_ends(self, compartments: list = None, exclude_extr: bool = False):
         parallelbar.parallelbar.PROGRESS = "ADDING TRANSPORT"
         dead_ends = cobra.io.read_sbml_model(self.targets_path).metabolites
 
@@ -886,7 +902,8 @@ class GapFiller:
 
         compartments_combinations = list(itertools.combinations(compartments, 1))
 
-        compartments_combinations = list(set([(comp1[0], 'cytop') for comp1 in compartments_combinations if comp1[0] != 'cytop']))
+        compartments_combinations = list(
+            set([(comp1[0], 'cytop') for comp1 in compartments_combinations if comp1[0] != 'cytop']))
 
         metabolites_ids = list(set(['__'.join(met.id.split("__")[:-1]) for met in dead_ends]))
 
@@ -897,10 +914,26 @@ class GapFiller:
             self.universal_model_compartmentalized.add_reactions(batch)
 
     def create_transport(self, compartments_combinations, metabolites):
+        """
+        Create transport reactions for metabolites.
+        Parameters
+        ----------
+        compartments_combinations : list
+            List of compartments combinations.
+        metabolites : list
+            List of metabolites to create transport reactions for.
+
+        Returns
+        -------
+        to_add : list
+            List of transport reactions to add to the model.
+
+        """
         to_add = []
         for metabolite_id in metabolites:
             for compartments_combination in compartments_combinations:
-                transport_reaction = Reaction(id=f"T_{metabolite_id}_{compartments_combination[0]}_to_{compartments_combination[1]}")
+                transport_reaction = Reaction(
+                    id=f"T_{metabolite_id}_{compartments_combination[0]}_to_{compartments_combination[1]}")
                 transport_reaction.name = f"Transport of {metabolite_id} between {compartments_combination[0]} and {compartments_combination[1]}"
                 transport_reaction.lower_bound = -1000
                 transport_reaction.upper_bound = 1000
@@ -915,17 +948,21 @@ class GapFiller:
         Build a temporary universal model from the universal model and the gap-filling results.
         Parameters
         ----------
-        related_pathways
-        folder_path
+        related_pathways : bool, optional
+            If True, related pathways will be added to the model.
+        folder_path : str
+            Path to the folder where the temporary universal model will be saved.
 
         Returns
         -------
 
         """
-        pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites', 'Microbial metabolism in diverse environments',
+        pathways_to_ignore = {'Metabolic pathways', 'Biosynthesis of secondary metabolites',
+                              'Microbial metabolism in diverse environments',
                               'Biosynthesis of cofactors', 'Carbon metabolism', 'Fatty acid metabolism'}
         pathways_to_keep = ["Nicotinate and nicotinamide metabolism", "One carbon pool by folate, "
-                              "Folate biosynthesis","Pantothenate and CoA biosynthesis", "Riboflavin metabolism"]
+                                                                      "Folate biosynthesis",
+                            "Pantothenate and CoA biosynthesis", "Riboflavin metabolism"]
         metabolite_pathways_map = {}
         universal_model = Model(model=self.universal_model_compartmentalized)
         print('Number of reactions in universal model:', len(universal_model.reactions))
@@ -934,13 +971,18 @@ class GapFiller:
         for target in targets.metabolites:
             if target.id in universal_model.metabolite_pathway_map.keys():
                 if '__'.join(target.id.split("__")[:-1]) in cofactors.keys():
-                    pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
-                    metabolite_pathways_map[target.id] = set(pathway for pathway in universal_model.metabolite_pathway_map[target.id] if pathway in cofactors['__'.join(target.id.split("__")[:-1])])
+                    pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
+                                         pathway in cofactors['__'.join(target.id.split("__")[:-1])]]
+                    metabolite_pathways_map[target.id] = set(
+                        pathway for pathway in universal_model.metabolite_pathway_map[target.id] if
+                        pathway in cofactors['__'.join(target.id.split("__")[:-1])])
                 else:
                     pathways_to_keep += [pathway for pathway in universal_model.metabolite_pathway_map[target.id]]
-                    metabolite_pathways_map[target.id] = set(pathway for pathway in universal_model.metabolite_pathway_map[target.id])
+                    metabolite_pathways_map[target.id] = set(
+                        pathway for pathway in universal_model.metabolite_pathway_map[target.id])
         pathways_to_keep = set(pathways_to_keep) - pathways_to_ignore
-        metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
+        metabolite_pathways_map = {metabolite: pathways - pathways_to_ignore for metabolite, pathways in
+                                   metabolite_pathways_map.items() if pathways not in pathways_to_ignore}
         if related_pathways:
             related_pathways = set()
             if os.path.exists(os.path.join(UTILITIES_PATH, 'related_pathways_map.json')):
@@ -968,10 +1010,25 @@ class GapFiller:
         self.universal_model_compartmentalized = Model()
         self.universal_model_compartmentalized.add_reactions(to_keep)
         self.universal_model_compartmentalized.add_groups(groups)
-        print('Number of reactions in temporary universal model:', len(self.universal_model_compartmentalized.reactions))
-        write_sbml_model(self.universal_model_compartmentalized, os.path.join(folder_path, 'temporary_universal_model.xml'))
+        print('Number of reactions in temporary universal model:',
+              len(self.universal_model_compartmentalized.reactions))
+        write_sbml_model(self.universal_model_compartmentalized,
+                         os.path.join(folder_path, 'temporary_universal_model.xml'))
 
     def identify_additional_seeds(self, combinet, targets):
+        """
+        Identify additional seeds to add to the model.
+        Parameters
+        ----------
+        combinet : TermSet
+            The combinet model, Combined model with custom universal model and draft model.
+        targets : cobra.Model
+            The targets model.
+
+
+        Returns
+        -------
+        """
         cofactors = json.load(open(os.path.join(UTILITIES_PATH, 'cofactors.json'), 'r'))
         for metabolite in self.never_producible:
             metabolite_id = metabolite.lstrip("M_")
@@ -982,7 +1039,8 @@ class GapFiller:
                         for potential_cofactor in metabolites_in_pathway:
                             potential_cofactor_id = '__'.join(potential_cofactor.split("__")[:-1])
                             if potential_cofactor_id in cofactors.keys():
-                                self.additional_seeds.add(self.universal_model.metabolites.get_by_id(potential_cofactor))
+                                self.additional_seeds.add(
+                                    self.universal_model.metabolites.get_by_id(potential_cofactor))
         current_seeds = set(read_sbml_model(self.seeds_path).metabolites)
         final_seeds = set(current_seeds.union(self.additional_seeds))
         res = []
@@ -1016,6 +1074,12 @@ class GapFiller:
 
     @deprecated
     def add_demands(self):
+        """
+        Add demands to the model.
+        Returns
+        -------
+
+        """
         for solution, temp_model in self.all_solutions_with_models:
             dead_ends = self.find_deadends(temp_model)
             to_remove = set()
@@ -1039,22 +1103,42 @@ class GapFiller:
                 solution.add(self.added_demands)
                 self.positive_solutions.add(solution)
         if self.positive_solutions:
-            self.original_model.add_reactions(self.universal_model.reactions.get_by_id(rxn.id) for rxn in list(self.positive_solutions)[0])
+            self.original_model.add_reactions(
+                self.universal_model.reactions.get_by_id(rxn.id) for rxn in list(self.positive_solutions)[0])
 
     def find_deadends(self, model=None):
         """
-        Return metabolites that are only produced in reactions.
+        Find dead-end metabolites in the model.
+        Parameters
+        ----------
+        model : cobra.Model, optional
+            The model to use. If None, the original model will be used.
 
-        Metabolites that are involved in an exchange reaction are never
-        considered to be dead ends.
-
+        Returns
+        -------
+        dead_ends : list
+            List of dead-end metabolites.
         """
 
         if model is None:
             model = self.original_model
 
         def is_only_product(metabolite: cobra.Metabolite, reaction: cobra.Reaction) -> bool:
-            """Determine if a metabolite is only a product of a reaction."""
+            """Determine if a metabolite is only a product of a reaction.
+
+            Parameters
+            ----------
+            metabolite : cobra.Metabolite
+                The metabolite to check.
+            reaction : cobra.Reaction
+                The reaction to check.
+
+            Returns
+            -------
+            bool
+                True if the metabolite is only a product of the reaction, False otherwise.
+            """
+
             if reaction.reversibility:
                 return False
             if reaction.get_coefficient(metabolite) > 0:
@@ -1075,9 +1159,9 @@ class GapFiller:
         Remove unnecessary seeds and demands from the model.
         Returns
         -------
-
         """
-        self.required_additional_seeds_and_demands = self.additional_seeds.union(set([met.id for demand in self.original_model.demands for met in demand.metabolites]))
+        self.required_additional_seeds_and_demands = self.additional_seeds.union(
+            set([met.id for demand in self.original_model.demands for met in demand.metabolites]))
         to_remove = set()
         for reaction in self.original_model.reactions:
             if reaction.id.startswith("Sk_") or reaction.id.startswith("DM_"):
@@ -1091,4 +1175,210 @@ class GapFiller:
         self.original_model.remove_reactions(list(to_remove))
         print(to_remove)
         for sink in to_remove:
-            self.required_additional_seeds_and_demands = self.required_additional_seeds_and_demands - set([met.id for met in sink.metabolites])
+            self.required_additional_seeds_and_demands = self.required_additional_seeds_and_demands - set(
+                [met.id for met in sink.metabolites])
+
+    def add_reactions_to_model_v2(self):
+        """
+        Add reactions to a model based on the obtained completion.
+        For each optimal completion, it adds the reactions. If a positive solution is obtained (fba sol) it adds the solution to a list.
+        Otherwise, it adds demands to the model and tries to optimize again. If a positive solution is obtained, it adds the solution to a list.
+        In the end, if at least one positive solution is obtained, the first one is selected as the final model. Otherwise, the minimal completion
+        is added to the model (even without producing biomass).
+        Returns
+        -------
+
+        """
+        positive_solutions = set()
+        already_in_original_model = {reaction.id for reaction in self.original_model.reactions}
+        seeds = read_sbml_model(self.seeds_path)
+        mets_in_medium = self.get_mets_in_medium(self.original_model)
+
+        for m in self.optimal_completions:
+            completion = self.get_completion(m)
+            self.all_completions.append(list(completion))
+            temp_model = self.original_model.copy()
+            to_add, already_in_original_model = self.add_reactions_to_temp_model(completion, already_in_original_model,
+                                                                                 temp_model)
+
+            self.create_sinks_for_metabolites(temp_model, seeds, mets_in_medium)
+
+            self.check_for_positive_solution(temp_model, to_add, positive_solutions)
+
+        self.handle_final_model_selection(positive_solutions, seeds, mets_in_medium, already_in_original_model)
+
+    def get_mets_in_medium(self, model):
+        """
+        Get metabolites in the medium.
+        Parameters
+        ----------
+        model : cobra.Model
+            The model to use.
+
+        Returns
+        -------
+
+        """
+        return {exchange.reactants[0].id for exchange in model.exchanges if exchange.lower_bound < 0}
+
+    def get_completion(self, m):
+        """
+        Get the completion from the gap-filling results.
+        Parameters
+        ----------
+        m : dict
+            The gap-filling results.
+
+        Returns
+        -------
+
+        """
+        return set(a[0] for pred in m if pred == 'xreaction' for a in m[pred])
+
+    def add_reactions_to_temp_model(self, completion, already_in_original_model, temp_model):
+        """
+        Add reactions to a temporary model based on a given set of reactions (completion).
+        It also updates the set of reactions already present in the original model.
+
+        Parameters:
+        - completion (set): A set of reactions to be added to the model.
+        - already_in_original_model (set): A set of reaction IDs already in the original model.
+        - temp_model (cobra.Model): The temporary model to which reactions will be added.
+
+        Returns:
+        - tuple: A tuple containing the list of added reactions and the updated set of reactions already in the original model.
+        """
+        to_add = []
+        for reaction in completion:
+            save_reaction = self.universal_model.reactions.get_by_id(reaction.replace("R_", "")).copy()
+            if save_reaction.id in already_in_original_model:
+                save_reaction.id = save_reaction.id + "_universal"
+            to_add.append(save_reaction)
+
+        temp_model.add_reactions(to_add)
+        # Ensure already_in_original_model is treated as a set before updating
+        already_in_original_model = set(already_in_original_model)
+        already_in_original_model.update({r.id for r in to_add})
+        return to_add, already_in_original_model
+
+    def create_sinks_for_metabolites(self, model, seeds, mets_in_medium):
+        """
+        Create sinks for metabolites in the medium.
+        Parameters
+        ----------
+        model : cobra.Model
+            The model to use.
+        seeds : cobra.Model
+            The model containing seed metabolites.
+        mets_in_medium : set
+            A set of metabolite IDs that are present in the medium.
+
+        Returns
+        -------
+
+        """
+
+        model_ids = [e.id for e in model.metabolites]
+        for seed in seeds.metabolites:
+            if seed.id in model_ids and not {seed.id}.issubset(mets_in_medium):
+                model.create_sink(seed.id)  # type: ignore
+
+    def check_for_positive_solution(self, temp_model, to_add, positive_solutions):
+        """
+        Check if the temporary model has a positive solution. If so, add it to the set of positive solutions.
+        Parameters
+        ----------
+        temp_model : cobra.Model
+            The temporary model to check.
+        to_add : list
+            List of reactions that were added to the model.
+        positive_solutions : set
+            A set to store models with positive solutions.
+
+        Returns
+        -------
+
+        """
+        sol = temp_model.slim_optimize()
+        if round(sol, 5) > 0:
+            positive_solutions = set(positive_solutions)
+            positive_solutions.add((temp_model, tuple([reaction.id for reaction in to_add])))
+        else:
+            self.add_demands_and_reoptimize(temp_model, to_add, positive_solutions)
+
+    def add_demands_and_reoptimize(self, temp_model, to_add, positive_solutions):
+        """
+        Add demand reactions to the temporary model and reoptimize. If a positive solution is found,
+        add it to the set of positive solutions.
+        Parameters
+        ----------
+        temp_model : cobra.Model
+            The temporary model to which demands are added and reoptimized.
+        to_add : list
+            List of reactions that were added to the model.
+        positive_solutions : set
+            A set to store models with positive solutions.
+
+        Returns
+        -------
+
+        """
+        temp_model, sol, demands = self.add_demands_v2(temp_model)  # type: ignore
+        if round(sol, 5) > 0:
+            to_add += demands
+            # Ensure positive_solutions is treated as a set before using the add method
+            positive_solutions = set(positive_solutions)
+            positive_solutions.add((temp_model, tuple([reaction.id for reaction in to_add])))
+
+    def handle_final_model_selection(self, positive_solutions, seeds, mets_in_medium, already_in_original_model):
+        """
+        Select the final model based on the available positive solutions. If no positive solution exists,
+        use the minimal completion.
+        Parameters
+        ----------
+        positive_solutions : set
+            A set containing models with positive solutions.
+        seeds : cobra.Model
+            The model containing seed metabolites.
+        mets_in_medium : set
+            A set of metabolite IDs that are present in the medium.
+        already_in_original_model : set
+            A set of reaction IDs already in the original model.
+
+        Returns
+        -------
+
+        """
+
+        if positive_solutions:
+            self.original_model = list(positive_solutions)[0][0]
+            print(self.original_model.slim_optimize())
+        else:
+            self.handle_no_positive_solution(seeds, mets_in_medium, already_in_original_model)
+
+    def handle_no_positive_solution(self, seeds, mets_in_medium, already_in_original_model):
+        """
+
+        Handle the case when no positive solution is found by adding minimal completion to the model.
+
+        Parameters
+        ----------
+        seeds : cobra.Model
+            The model containing seed metabolites.
+        mets_in_medium : set
+            A set of metabolite IDs that are present in the medium.
+        already_in_original_model : set
+            A set of reaction IDs already in the original model.
+
+        Returns
+        -------
+
+        """
+        to_add = []
+        for reaction in self.minimal_completion:
+            save_reaction = self.universal_model.reactions.get_by_id(reaction.replace("R_", "")).copy()
+            if {save_reaction.id}.issubset(already_in_original_model):
+                save_reaction.id = save_reaction.id + "_universal"
+            to_add.append(save_reaction)
+        self.create_sinks_for_metabolites(self.original_model, seeds, mets_in_medium)
+        self.original_model.add_reactions(to_add)
