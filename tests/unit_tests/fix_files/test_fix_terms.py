@@ -1,7 +1,7 @@
 import unittest
 import os
 import tempfile
-from src.gap_filling_dl.biomeneco.fix_files.fix_terms import fix_terms
+from gap_filling_dl.biomeneco.fix_files.fix_terms import fix_terms
 
 
 class TestFixTerms(unittest.TestCase):
