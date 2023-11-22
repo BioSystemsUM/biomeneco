@@ -6,20 +6,14 @@ import shutil
 from copy import deepcopy
 from functools import partial
 from typing import Tuple, List
-
+from .utils import write_metabolites_to_sbml
 import cobra
 from bioiso import BioISO
 from bioiso import set_solver
 from cobra import Reaction
 from pandas import DataFrame
 from parallelbar import progress_imap
-
 from .utils import get_metabolite_pathway_map, get_reaction_pathway_map
-
-try:
-    from write_sbml import write_metabolites_to_sbml
-except:
-    from gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
 
 
 class Model(cobra.Model):
