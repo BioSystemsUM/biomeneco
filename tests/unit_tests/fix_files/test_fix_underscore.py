@@ -1,7 +1,7 @@
 import unittest
 import os
 from tempfile import TemporaryDirectory
-from src.gap_filling_dl.biomeneco.fix_files.fix_underscore import fix_file
+from gap_filling_dl.biomeneco.fix_files.fix_underscore import fix_file
 
 
 class TestFixFile(unittest.TestCase):
