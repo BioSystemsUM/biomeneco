@@ -8,7 +8,6 @@ import time
 from functools import partial
 from os.path import join, dirname
 from typing import List
-
 import cobra
 import parallelbar
 from bioiso import BioISO, set_solver
@@ -22,8 +21,7 @@ from meneco.query import get_minimal_completion_size
 from parallelbar import progress_imap
 from parallelbar.parallelbar import ProgressBar, _update_error_bar
 from typing_extensions import deprecated
-from gap_filling_dl.write_sbml.metabolites_to_sbml import write_metabolites_to_sbml
-
+from .utils import write_metabolites_to_sbml
 from gap_filling_dl.kegg_api import create_related_pathways_map, get_related_pathways
 from .model import Model
 from .utils import get_compartments_in_model, clone_metabolite
