@@ -83,7 +83,7 @@ else:
 
 
 class GapFiller:
-    def __init__(self, model_path, universal_model_path, results_path, max_solutions):
+    def __init__(self, model_path: str, universal_model_path: str, results_path: str, max_solutions: int):
         """
         Initialize the GapFiller object which is designed to fill gaps in metabolic models.
 
