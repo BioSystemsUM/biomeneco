@@ -3,8 +3,7 @@ import sys
 import time
 from clyngor.as_pyasp import TermSet, Atom
 from cobra.io import read_sbml_model, write_sbml_model
-from gap_filling_dl import write_metabolites_to_sbml
-
+from ..src.gap_filling_dl.biomeneco.utils import write_metabolites_to_sbml
 from gap_filling_dl.biomeneco.model import Model
 from meneco.meneco import query, sbml, extract_xreactions
 import warnings
