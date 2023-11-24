@@ -41,7 +41,7 @@ jobs:
         run: |
           pip install .
 
-      # Step to run unit tests
+      # Step to run unit tests with pytest
       - name: Run Unit Tests
         run: |
           pytest tests/unit_tests/biomeneco/
