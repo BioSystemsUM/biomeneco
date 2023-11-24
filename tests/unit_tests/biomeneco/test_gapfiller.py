@@ -42,15 +42,15 @@ class MockMetabolite(MagicMock):
 class TestGapFiller(unittest.TestCase):
 
     def setUp(self):
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        self.model_path = os.path.join(base_dir, "data/test_model/model_toy_network_copy.xml")
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        self.model_path = os.path.join(base_dir, "tests/data/test_model/model_toy_network_copy.xml")
         self.universal_model_path = os.path.join(base_dir, "utilities/universal_model.xml")
-        self.results_path = os.path.join(base_dir, "data/test_model/output")
+        self.results_path = os.path.join(base_dir, "tests/data/test_model/output")
         self.max_solutions = 1
         self.gf = GapFiller(self.model_path, self.universal_model_path, self.results_path, self.max_solutions)
 
-        self.gf.seeds_path = os.path.join(base_dir, "data/test_model/model_seeds.xml")
-        self.gf.targets_path = os.path.join(base_dir, "data/test_model/model_targets.xml")
+        self.gf.seeds_path = os.path.join(base_dir, "tests/data/test_model/model_seeds.xml")
+        self.gf.targets_path = os.path.join(base_dir, "tests/data/test_model/model_targets.xml")
 
     # def tearDown(self):
     #     # remove the mock files
