@@ -34,4 +34,4 @@ WORKDIR /workdir
 EXPOSE 80
 
 # Command to run your Python service
-#CMD ["python3", "/home/src/gap_filling_dl/MenecoRunner.py"]
+CMD ["python3", "/home/src/gap_filling_dl/MenecoRunner.py"]
