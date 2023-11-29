@@ -1,7 +1,7 @@
 import cobra
 from cobra.flux_analysis import flux_variability_analysis
 from bioservices import KEGG
-from typing import Dict
+from typing import Dict, List, Tuple
 
 def edit_metabolite_id(metabolite_id):
     if 'C_' in metabolite_id:
