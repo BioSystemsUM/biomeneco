@@ -326,7 +326,7 @@ class GapFiller:
         Parameters
         ----------
         optimize : bool, optional
-            If True, the gap-filling algorithm will optimize the model after adding reactions.
+            Keep it False for the fastest method.
         write_to_file : bool, optional
             If True, the gap-filled model will be written to a file.
         removed_reactions : list, optional
